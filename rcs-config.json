@@ -1,0 +1,13 @@
+﻿{
+  "Name": "RCS Configuration File",
+  "Description": "Contains settings to configure the RCS Server",
+  "WSConfiguration": {
+    "WebSocketPort": 8080,
+    "WebSocketCertificate": "tlscert.pfx"
+  },
+  "AMTConfiguration": {
+    "AMTPassword": "P@ssw0rd",
+    "ProvisioningCert": [ "vprodemo.pfx" ],
+    "ProvisioningCertPassword": [ "P@ssw0rd" ]
+  }
+}
