@@ -157,6 +157,7 @@ function convertPfxToObject(pfxpath, passphrase) {
 // Pulls the provisioning certificate apart and exports each PEM for injecting into AMT
 function dumpPfx(pfxobj) {
     var provisioningCertificateObj = {};
+    var certObj = {};
     if (pfxobj) {
         if (pfxobj.certs && Array.isArray(pfxobj.certs)) {
             for (var i = 0; i < pfxobj.certs.length; i++) {
@@ -165,18 +166,21 @@ function dumpPfx(pfxobj) {
                 //Need to trim off the BEGIN and END so we just have the raw pem
                 pem = pem.replace('-----BEGIN CERTIFICATE-----', '');
                 pem = pem.replace('-----END CERTIFICATE-----', '');
+                // Index 0 = Leaf, Index 1 = Root, rest are Intermediate.  Inject in reverse order (Leave, last Intermediate, previous Intermediate, ..., Root)
                 if (i == 0) {
-                    provisioningCertificateObj['leaf'] = pem;
-                    //fs.writeFileSync("./leaf.txt", pem);
+                    certObj['leaf'] = pem;
                 } else if (i == 1) {
-                    provisioningCertificateObj['root'] = pem;
-                    //fs.writeFileSync("./root.txt", pem);
+                    certObj['root'] = pem;
                 } else {
-                    provisioningCertificateObj['inter' + i] = pem;
-                    //fs.writeFileSync("./inter-" + i + ".txt", pem);
+                    certObj['inter' + i] = pem;
                 }
-            }
+            }         
         }
+        provisioningCertificateObj['certChain'] = [];
+        provisioningCertificateObj['certChain'].push(certObj['leaf']);
+        if (certObj['inter3'] !== undefined) { provisioningCertificateObj['certChain'].push(certObj['inter3']); }
+        provisioningCertificateObj['certChain'].push(certObj['inter2']);
+        provisioningCertificateObj['certChain'].push(certObj['root']);
         if (pfxobj.keys && Array.isArray(pfxobj.keys)) {
             for (var i=0; i< pfxobj.keys.length; i++) {
                 var key = pfxobj.keys[i];
@@ -185,6 +189,7 @@ function dumpPfx(pfxobj) {
                 provisioningCertificateObj['privateKey'] = key;
             }
         }
+        
         return provisioningCertificateObj;
     }
 }
