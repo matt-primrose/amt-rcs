@@ -5,6 +5,7 @@ Requires:
  - Intel(r) AMT provisioning certificate that matches the DNS suffix of your Intel(r) AMT machine
 
 Modify the rcs-config.json file to specify the location of the provisioning certificate and specify the Intel(r) AMT password to be set
+```
 {
   "Name": "RCS Configuration File",
   "Description": "Contains settings to configure the RCS Server",
@@ -18,6 +19,7 @@ Modify the rcs-config.json file to specify the location of the provisioning cert
     "ProvisioningCertPassword": [ "certpassword" ] - password to access provisioning certificate
   }
 }
+```
 
 Start from command line: node amt-rcs.js
 
