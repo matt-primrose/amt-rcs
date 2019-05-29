@@ -6,8 +6,8 @@
     "WebSocketCertificate": "tlscert.pfx"
   },
   "AMTConfiguration": {
-    "AMTPassword": "P@ssw0rd",
-    "ProvisioningCert": [ "vprodemo.pfx" ],
-    "ProvisioningCertPassword": [ "P@ssw0rd" ]
+    "AMTPassword": "amtP@ssword",
+    "ProvisioningCert": [ "provcert.pfx" ],
+    "ProvisioningCertPassword": [ "certpassword" ]
   }
 }
