@@ -41,7 +41,7 @@ function WebSocketServer(port, wsscert, connectionHandler) {
         connection.on('error', function (event) { obj.eventHandler('error', event); });
         // client disconnected
         connection.on('close', function (connection) {
-            obj.eventHandler('close', 'AMT Device ' + index + ' disconnected.');
+            obj.eventHandler('close', { "status": "ok", "event": "close", "data": "AMT Device " + index + " disconnected." }, index);
             // remove client from the list of connected clients
             obj.clients.splice(index, 1);
         });

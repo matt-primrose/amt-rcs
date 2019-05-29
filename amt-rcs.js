@@ -28,6 +28,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const ws = require('./wsserver');
 var wsServer, rcsConfig;
+const RCSMessageProtocolVersion = 1; // RCS Message Protocol Version
 
 function rcs() {
     startWebSocketServer();
@@ -43,77 +44,72 @@ function startWebSocketServer() {
     });   
 }
 
-function wsConnectionHandler(type, message, index) {
+// Callback from WebSocket Server to handle incomming messages
+function wsConnectionHandler(event, message, index) {
+    // Parse the incoming JSON message and figure out what type data message is coming in (string, buffer, or object)
     if (typeof message == 'string') {
-        try {
-            message = JSON.parse(message);
-        } catch (e) {
-            message = message;
+        try { message = JSON.parse(message); }
+        catch (e) { message = message; }
+        if (message.event) { event = message.event; }
+        if (message.data) {
+            try { message.data = JSON.parse(message.data); }
+            catch (e) { message.data = message.data; }
         }
-        if (message.Type) {
-            type = message.Type;
-        } else if (message.type && message.type == 'Buffer') {
-            message = Buffer.from(message);
-        }
+        if (message.data.type && message.data.type == 'Buffer') { message.data = Buffer.from(message.data); }
     }
-    switch (type) {
+    switch (event) {
+        // Handles 'cmd' messages
         case 'cmd':
-            if (message.Body == 'acm') {
-                var acm = {};
-                acm.Type = 'cmd';
-                acm.Body = 'acmready';
-                wsServer.sendMessage(index, acm);
-            }
+            if (message.data == 'acm') { sendMessage(index, "ok", "cmd", "acmready"); }
             break;
+        // Handles 'message' type messages - these are typically buffer or object messages
         case 'message':
-            if (Buffer.isBuffer(message)) {
-                var rcsObj = remoteConfiguration(message);
-                wsServer.sendMessage(index, rcsObj);
+            if (Buffer.isBuffer(message.data)) {
+                var rcsObj = remoteConfiguration(message.data);
+                sendMessage(index, "ok", "message", rcsObj);
             } else {
-                if (message.Header && message.Header.HttpError) {
-                    console.log((new Date()) + ' Http Error from client: ' + message.Header.HttpError);
-                } else if (message.ReturnValueStr) {
-                    console.log((new Date()) + ' Configuration Result from client: ' + message.ReturnValueStr);
-                }
-                
+                if (message.data.Header && message.data.Header.HttpError) { console.log((new Date()) + ' Http Error from client: ' + message.data.Header.HttpError); }
+                else if (message.data.ReturnValueStr) { console.log((new Date()) + ' Configuration Result from client: ' + message.data.ReturnValueStr); }
             }
             break;
+        // Handles 'error' type messages
         case 'error':
-            console.log('Received "error" Message: ' + message);
+            console.log('AMT Device ' + index + ' received "error" message: ' + message.data);
             break;
+        // Handles 'close' type messages when the socket closes
         case 'close':
-            console.log((new Date()) + ' ' + message);
+            console.log((new Date()) + ' ' + message.data);
             break;
+        // Handles 'finish' type messages to indicate when the configuration process has completed (success or failure)
         case 'finish':
-            console.log((new Date()) + ' AMT Configuration of device ' + index + ' ' + message.Body);
+            console.log((new Date()) + ' AMT Configuration of device ' + index + ' ' + message.data);
             break;
+        // Catches anything that falls through the cracks.  Shouldn't ever see this message
         default:
-            console.log('Detected a new websocket message type (need to handle this): ' + type);
+            console.log('Detected a new websocket message type (need to handle this): ' + event);
             break;
     }
 }
 
+// Main function for handling the remote configuration tasks.  Needs the fwNonce from AMT to start and returns the configuration object to be passed down to AMT
 function remoteConfiguration(fwNonce) {
     var rcsObj = {};
     var privateKey;
-    //console.log('Starting Remote Configuration');
-    //console.log('Received fwNonce: ' + fwNonce);
+    // Gets all of the certificate information needed by AMT
     rcsObj.provCertObj = getProvisioningCertObj();
     privateKey = rcsObj.provCertObj.privateKey;
+    // Removes the private key information from the certificate object - don't send private key to the client
     delete rcsObj.provCertObj.privateKey;
-    //console.log('Generated Certificate Object: \n\r' + JSON.stringify(rcsObj.provCertObj));
+    // Create a one time nonce that allows AMT to verify the digital signature
     rcsObj.mcNonce = generateMcnonce();
-    //console.log('Generated McNonce: ' + rcsObj.mcNonce);
-    //Need to create a new array so we can concatinate both nonces (FWNonce first, McNonce second)
+    // Need to create a new array so we can concatinate both nonces (FWNonce first, McNonce second)
     var arr = [fwNonce, rcsObj.mcNonce];
+    // mcNonce needs to be in base64 format to successfully send over WebSocket connection
     rcsObj.mcNonce = rcsObj.mcNonce.toString('base64');
-    //console.log('Added nonces to Array: ' + arr);
-    //Then we need to sign the concatinated nonce with the private key of the provisioning certificate and encode as base64.
+    // Then we need to sign the concatinated nonce with the private key of the provisioning certificate and encode as base64.
     rcsObj.digitalSignature = signString(Buffer.concat(arr), privateKey);
-    //console.log('Generated digital signature: ' + rcsObj.digitalSignature);
-    //console.log('rcsObj: \n\r' + JSON.stringify(rcsObj));
+    // Grab the AMT password from the rcsConfig file and send that down so we can set the new MEBx password
     rcsObj.amtPassword = rcsConfig.AMTConfiguration.AMTPassword;
-    //console.log(rcsObj);
     return rcsObj;
 }
 
@@ -217,6 +213,15 @@ function signString(message, key) {
     signer.update(message);
     var sign = signer.sign(forge.pki.privateKeyToPem(key), 'base64');
     return sign;
+}
+
+// Sends messages to WebSocket server using RCS message protocol
+// Message Protocol: JSON: { version: int, status: "ok"|"error", event: EVENT_NAME, data: OBJ|Buffer|String }
+function sendMessage(index, status, event, message) {
+    if (wsServer == null) { console.log((new Date()) + ' WebSocket Server not initialized.'); }
+    if (status == null) { status = 'ok'; }
+    var obj = { "version": RCSMessageProtocolVersion, "status": status, "event": event, "data": message };
+    wsServer.sendMessage(index, obj);
 }
 
 rcs();
