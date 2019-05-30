@@ -1,5 +1,5 @@
 ﻿# amt-rcs
-A Remote Configuration Service for configuring Intel:registered: AMT devices into admin control mode.  Depends on node-forge and ws NPM libraries.  
+A Remote Configuration Service for configuring Intel:registered: AMT devices into admin control mode.  Depends on node-forge and ws NPM libraries.  Before running the server, you'll want to npm install both of these packages.
 # Instructions
 Requires: 
  - Intel:registered: AMT provisioning certificate that matches the DNS suffix of your Intel:registered: AMT machine
