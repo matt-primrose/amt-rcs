@@ -3,11 +3,34 @@
   "Description": "Contains settings to configure the RCS Server",
   "WSConfiguration": {
     "WebSocketPort": 8080,
-    "WebSocketCertificate": "tlscert.pfx"
+    "WebSocketTLS": false,
+    "WebSocketCertificate": "tlscert.pem",
+    "WebSocketCertificateKey": "tlskey.pem"
   },
-  "AMTConfiguration": {
-    "AMTPassword": "amtP@ssword",
-    "ProvisioningCert": [ "provcert.pfx" ],
-    "ProvisioningCertPassword": [ "certpassword" ]
-  }
+  "AMTConfigurations": [
+    {
+      "ProfileName": "default",
+      "AMTPassword": "password",
+      "ConfigurationScript": ""
+    },
+    {
+      "ProfileName": "config2",
+      "AMTPassword": "password",
+      "ConfigurationScript": ""
+    }
+  ],
+  "AMTDomains": [
+    {
+      "Name": "domain1",
+      "DomainSuffix": "amt.net",
+      "ProvisioningCert": "d1.pfx",
+      "ProvisioningCertPassword": "password"
+    },
+    {
+      "Name": "domain2",
+      "DomainSuffix": "somethingelse.com",
+      "ProvisioningCert": "d2.pfx",
+      "ProvisioningCertPassword": "password"
+    }
+  ]
 }

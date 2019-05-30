@@ -21,14 +21,32 @@ limitations under the License.
 */
 
 "use strict";
+const http = require('https');
 const WebSocket = require('ws');
-function WebSocketServer(port, wsscert, connectionHandler) {   
+const fs = require('fs');
+
+function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {   
     var obj = new Object();
     obj.port = port;
-    obj.wsscert = wsscert;
-    obj.crypt
     obj.clients = [];
-    obj.wsServer = new WebSocket.Server({ port: obj.port });
+    obj.tls = tls;
+    if (obj.tls == true) {
+        try {
+            var privateKey = fs.readFileSync(wsscertkey, 'utf8');
+            var certificate = fs.readFileSync(wsscert, 'utf8');
+        } catch (e) {
+            console.log('TLS certificate not found.');
+            process.exit(1);
+        }
+        var credentials = { key: privateKey, cert: certificate };
+        obj.httpsServer = https.createServer(credentials);
+        httpsServer.listen(obj.port);
+        obj.wsServer = new WebSocket.Server({
+            server: httpsServer
+        });
+    } else {
+        obj.wsServer = new WebSocket.Server({ port: obj.port });
+    }
     obj.wsServer.on('connection', (connection) => {
         // we need to know client index to remove them on 'close' event
         var index = obj.clients.push(connection) - 1;
