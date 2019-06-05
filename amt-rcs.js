@@ -32,21 +32,29 @@ const RCSMessageProtocolVersion = 1; // RCS Message Protocol Version
 const RCSConfigFile = './rcs-config.json';
 var connection = {};
 
-function rcs() {
-    startWebSocketServer();
-}
+/**
+ * @description Main function to start the RCS service
+ */
+function rcs() { startWebSocketServer(); }
 
-// Start the WebSocket Server
+/**
+* @description Start the WebSocket Server
+*/
 function startWebSocketServer() {
-    console.log('Starting RCS Server...');
+    console.log((new Date()) + ' Starting RCS Server...');
     fs.readFile(RCSConfigFile, 'utf8', function (err, file) {
         rcsConfig = JSON.parse(file.trim());
         wsServer = ws(rcsConfig.WSConfiguration.WebSocketPort, rcsConfig.WSConfiguration.WebSocketTLS, rcsConfig.WSConfiguration.WebSocketCertificate, rcsConfig.WSConfiguration.WebSocketCertificateKey, wsConnectionHandler);
-        console.log('RCS Server running on port: ' + rcsConfig.WSConfiguration.WebSocketPort);
+        console.log((new Date()) + ' RCS Server running on port: ' + rcsConfig.WSConfiguration.WebSocketPort);
     });   
 }
 
-// Callback from WebSocket Server to handle incomming messages
+/**
+ * @description Callback from WebSocket Server to handle incomming messages
+ * @param {string} event The event type coming from websocket
+ * @param {string|buffer|object} message The message coming in over the websocket
+ * @param {number} index The connection index of the connected device
+ */
 function wsConnectionHandler(event, message, index) {
     if (connection[index] == undefined) { connection[index] = {}; }
     // Parse the incoming JSON message and figure out what type data message is coming in (string, buffer, or object)
@@ -101,7 +109,12 @@ function wsConnectionHandler(event, message, index) {
     }
 }
 
-// Main function for handling the remote configuration tasks.  Needs the fwNonce from AMT to start and returns the configuration object to be passed down to AMT
+/**
+ * @description Main function for handling the remote configuration tasks.  Needs the fwNonce from AMT to start and returns the configuration object to be passed down to AMT
+ * @param {buffer} fwNonce AMT firmware nonce as a buffer
+ * @param {number} cindex Connection index of the device sending the message
+ * @returns {object} returns the configuration object to be passed down to AMT
+ */
 function remoteConfiguration(fwNonce, cindex) {
     var rcsObj = {};
     var privateKey;
@@ -134,10 +147,18 @@ function remoteConfiguration(fwNonce, cindex) {
             rcsObj.amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword
         }
     }
+    if (rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== "") {
+        try { rcsObj.profileScript = fs.readFileSync(rcsConfig.AMTConfigurations[cindex].ConfigurationScript, 'utf8'); }
+        catch (e) { rcsObj.profileScript = ''; }
+    }
     return rcsObj;
 }
 
-// Disect the provisioning certificate.
+/**
+ * @description Disect the provisioning certificate
+ * @param {string} domain DNS Suffix of AMT device
+ * @returns {object} Returns the provisioning certificate object
+ */
 function getProvisioningCertObj(domain) {
     var cert, certpass;
     if (domain == null || domain == '') {
@@ -168,7 +189,12 @@ function getProvisioningCertObj(domain) {
     return dumpPfx(pfxobj);
 }
 
-// Extracts the provisioning certificate into an object for later manipulation
+/**
+ * @description Extracts the provisioning certificate into an object for later manipulation
+ * @param {string} pfxpath Path to provisioning certificate
+ * @param {string} passphrase Password to open provisioning certificate
+ * @returns {object} Object containing cert pems and private key
+ */
 function convertPfxToObject(pfxpath, passphrase) {
     var pfx_out = { certs: [], keys: [] };
     var pfxbuf = fs.readFileSync(pfxpath);
@@ -193,7 +219,11 @@ function convertPfxToObject(pfxpath, passphrase) {
     return pfx_out;
 }
 
-// Pulls the provisioning certificate apart and exports each PEM for injecting into AMT
+/**
+ * @description Pulls the provisioning certificate apart and exports each PEM for injecting into AMT
+ * @param {object} pfxobj Certificate object from convertPfxToObject function
+ * @returns {object} Returns provisioning certificiate object with certificate chain in proper order
+ */
 function dumpPfx(pfxobj) {
     var provisioningCertificateObj = {};
     var certObj = {};
@@ -205,14 +235,10 @@ function dumpPfx(pfxobj) {
                 //Need to trim off the BEGIN and END so we just have the raw pem
                 pem = pem.replace('-----BEGIN CERTIFICATE-----', '');
                 pem = pem.replace('-----END CERTIFICATE-----', '');
-                // Index 0 = Leaf, Index 1 = Root, rest are Intermediate.  Inject in reverse order (Leave, last Intermediate, previous Intermediate, ..., Root)
-                if (i == 0) {
-                    certObj['leaf'] = pem;
-                } else if (i == 1) {
-                    certObj['root'] = pem;
-                } else {
-                    certObj['inter' + i] = pem;
-                }
+                // Index 0 = Leaf, Index 1 = Root, rest are Intermediate.  Inject in reverse order (Leaf, last Intermediate, previous Intermediate, ..., Root)
+                if (i == 0) { certObj['leaf'] = pem; }
+                else if (i == 1) { certObj['root'] = pem; }
+                else { certObj['inter' + i] = pem; }
             }         
         }
         provisioningCertificateObj['certChain'] = [];
@@ -223,24 +249,27 @@ function dumpPfx(pfxobj) {
         if (pfxobj.keys && Array.isArray(pfxobj.keys)) {
             for (var i=0; i< pfxobj.keys.length; i++) {
                 var key = pfxobj.keys[i];
-                //var pem = forge.pki.privateKeyToPem(key);
                 //Just need the key in key format for signing.  Keeping the private key in memory only.
                 provisioningCertificateObj['privateKey'] = key;
             }
         }
-        
         return provisioningCertificateObj;
     }
 }
 
-// Generates the console nonce used validate the console.  AMT only accepts a nonce that is 20 bytes long of random data
-function generateMcnonce() {
-    var mcNonce = Buffer.from(crypto.randomBytes(20), 0, 20);
-    //console.log(mcNonce);
-    return mcNonce;   
-}
+/**
+ * @description Generates the console nonce used validate the console.  AMT only accepts a nonce that is 20 bytes long of random data
+ * @returns {buffer} Returns console nonce used to verify RCS server to AMT
+ */
+function generateMcnonce() { var mcNonce = Buffer.from(crypto.randomBytes(20), 0, 20); return mcNonce; }
 
-// Verification check that the digital signature is correct
+/**
+ * @description Verification check that the digital signature is correct.  Only used for debug
+ * @param {string} message Message to be checked
+ * @param {cert} cert Certificate used to sign
+ * @param {string} sign Signature used to sign
+ * @returns {boolean} True = pass, False = fail
+ */
 function verifyString(message, cert, sign) {
     var crypto = require('crypto');
     var verify = crypto.createVerify('sha256');
@@ -249,7 +278,12 @@ function verifyString(message, cert, sign) {
     return ver;
 }
 
-// Signs the concatinated nonce with the private key of the provisioning certificate and encodes at base64
+/**
+ * @description Signs the concatinated nonce with the private key of the provisioning certificate and encodes as base64
+ * @param {string} message Message to be signed
+ * @param {string} key Private key of provisioning certificate
+ * @returns {string} Returns the signed string
+ */
 function signString(message, key) {
     var crypto = require('crypto');
     var signer = crypto.createSign('sha256');
@@ -258,8 +292,14 @@ function signString(message, key) {
     return sign;
 }
 
-// Sends messages to WebSocket server using RCS message protocol
-// Message Protocol: JSON: { version: int, status: "ok"|"error", event: EVENT_NAME, data: OBJ|Buffer|String }
+/**
+ * @description Sends messages to WebSocket server using RCS message protocol
+ * @description Message Protocol: JSON: { version: int, status: "ok"|"error", event: EVENT_NAME, data: OBJ|Buffer|String }
+ * @param {number} index Index of the device connected to the websocket server
+ * @param {string} status OK|Error status message type
+ * @param {string} event Event type { cmd, message, error, close, finish }
+ * @param {string|buffer|object} message Message blob going to device
+ */
 function sendMessage(index, status, event, message) {
     if (wsServer == null) { console.log((new Date()) + ' WebSocket Server not initialized.'); }
     if (status == null) { status = 'ok'; }

@@ -25,6 +25,15 @@ const http = require('https');
 const WebSocket = require('ws');
 const fs = require('fs');
 
+/**
+ * @description Creates the websocket server object
+ * @param {number} port Port used for websocket communication
+ * @param {boolean} tls Flag for enabling TLS
+ * @param {string} wsscert location of TLS certificate
+ * @param {string} wsscertkey private key of TLS certificate
+ * @param {function} connectionHandler Callback function to calling library
+ * @returns {object} Returns the websocket server object to the calling library
+ */
 function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {   
     var obj = new Object();
     obj.port = port;
