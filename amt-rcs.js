@@ -28,7 +28,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const ws = require('./wsserver');
 var wsServer, rcsConfig;
-const RCSMessageProtocolVersion = 1; // RCS Message Protocol Version
+const RCSMessageProtocolVersion = 1; // RCS Message Protocol Version.
 const RCSConfigFile = './rcs-config.json';
 var connection = {};
 
