@@ -15,7 +15,7 @@
     },
     {
       "ProfileName": "config2",
-      "AMTPassword": "password",
+      "AMTPassword": "P@ssw0rd",
       "ConfigurationScript": ""
     }
   ],
@@ -28,9 +28,9 @@
     },
     {
       "Name": "domain2",
-      "DomainSuffix": "somethingelse.com",
-      "ProvisioningCert": "d2.pfx",
-      "ProvisioningCertPassword": "password"
+      "DomainSuffix": "vprodemo.com",
+      "ProvisioningCert": "vprodemo.pfx",
+      "ProvisioningCertPassword": "P@ssw0rd"
     }
   ]
 }

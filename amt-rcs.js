@@ -77,10 +77,19 @@ function wsConnectionHandler(event, message, index) {
             if (message.data.dnssuffix) {
                 connection[index]["dnssuffix"] = message.data.dnssuffix;
             }
-            if (message.data == 'acm' || message.data.cmd == 'acm') { sendMessage(index, "ok", "cmd", "acmready"); }
+            if (message.data.digestrealm) {
+                connection[index]["digestrealm"] = message.data.digestrealm;
+            }
+            if (message.data.fwnonce) {
+                connection[index]["fwnonce"] = Buffer.from(message.data.fwnonce);
+            }
+            if (message.data == 'acm' || message.data.cmd == 'acm') {
+                var rcsObj = remoteConfiguration(connection[index].fwnonce, index);
+                sendMessage(index, "ok", "message", rcsObj);
+            }
             break;
         // Handles 'message' type messages - these are typically buffer or object messages
-        case 'message':
+        /*case 'message':
             if (Buffer.isBuffer(message.data)) {
                 var rcsObj = remoteConfiguration(message.data, index);
                 sendMessage(index, "ok", "message", rcsObj);
@@ -88,7 +97,7 @@ function wsConnectionHandler(event, message, index) {
                 if (message.data.Header && message.data.Header.HttpError) { console.log((new Date()) + ' Http Error from client: ' + message.data.Header.HttpError); }
                 else if (message.data.ReturnValueStr) { console.log((new Date()) + ' Configuration Result from client: ' + message.data.ReturnValueStr); }
             }
-            break;
+            break;*/
         // Handles 'error' type messages
         case 'error':
             console.log('AMT Device ' + index + ' received "error" message: ' + message.data);
@@ -115,13 +124,14 @@ function wsConnectionHandler(event, message, index) {
  * @param {number} cindex Connection index of the device sending the message
  * @returns {object} returns the configuration object to be passed down to AMT
  */
-function remoteConfiguration(fwNonce, cindex) {
+function remoteConfiguration(fwNonce, cindex) {   
     var rcsObj = {};
     var privateKey;
     // Gets all of the certificate information needed by AMT
     var dnsSuffix = null;
     // Check the connection array if the dnssuffix is set for this connection.  If not leave null and hope the default AMT provisioning certificate matches the AMT DNS Suffix.
     if (connection[cindex] && connection[cindex].dnssuffix) { dnsSuffix = connection[cindex].dnssuffix; }
+    console.log(dnsSuffix);
     rcsObj.provCertObj = getProvisioningCertObj(dnsSuffix);
     privateKey = rcsObj.provCertObj.privateKey;
     // Removes the private key information from the certificate object - don't send private key to the client!!
@@ -148,11 +158,16 @@ function remoteConfiguration(fwNonce, cindex) {
             amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword
         }
     }
-    rcsObj.passwordHash == crypto.createHash('md5').update('admin:' + connection[cindex].digestrealm + ':' + amtPassword).digest("hex").substring(0, 32);
+    console.log(amtPassword);
+    console.log(connection[cindex].digestrealm);
+    var data = 'admin:' + connection[cindex].digestrealm + ':' + amtPassword;
+    rcsObj.passwordHash = crypto.createHash('md5').update(data).digest("hex");
+    console.log(rcsObj.passwordHash);
     if (rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== "") {
         try { rcsObj.profileScript = fs.readFileSync(rcsConfig.AMTConfigurations[cindex].ConfigurationScript, 'utf8'); }
         catch (e) { rcsObj.profileScript = ''; }
     }
+    console.log(JSON.stringify(rcsObj));
     return rcsObj;
 }
 
@@ -237,6 +252,7 @@ function dumpPfx(pfxobj) {
                 //Need to trim off the BEGIN and END so we just have the raw pem
                 pem = pem.replace('-----BEGIN CERTIFICATE-----', '');
                 pem = pem.replace('-----END CERTIFICATE-----', '');
+                // pem = pem.replace(/(\r\n|\n|\r)/g, '');
                 // Index 0 = Leaf, Index 1 = Root, rest are Intermediate.  Inject in reverse order (Leaf, last Intermediate, previous Intermediate, ..., Root)
                 if (i == 0) { certObj['leaf'] = pem; }
                 else if (i == 1) { certObj['root'] = pem; }
