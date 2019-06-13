@@ -135,18 +135,20 @@ function remoteConfiguration(fwNonce, cindex) {
     // Then we need to sign the concatinated nonce with the private key of the provisioning certificate and encode as base64.
     rcsObj.digitalSignature = signString(Buffer.concat(arr), privateKey);
     // Grab the AMT password from the specified profile in rcsConfig file and add that to the rcsObj so we can set the new MEBx password
-    if (!connection[cindex] || !connection[cindex].profile || connection[cindex].profile == "" || connection[cindex].profile == null) { rcsObj.amtPassword == rcsConfig.AMTConfigurations[0].AMTPassword; }  // If profile is not specified, set the profile to the first profile in rcs-config.json
+    var amtPassword
+    if (!connection[cindex] || !connection[cindex].profile || connection[cindex].profile == "" || connection[cindex].profile == null) { amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword; }  // If profile is not specified, set the profile to the first profile in rcs-config.json
     else {
         var match = false;
         for (var x = 0; x < rcsConfig.AMTConfigurations.length; x++) {
-            if (rcsConfig.AMTConfigurations[x].ProfileName == connection[cindex].profile) { rcsObj.amtPassword = rcsConfig.AMTConfigurations[x].AMTPassword; match = true; break;} // Got a match, set AMT Profile Password in rcsObj
+            if (rcsConfig.AMTConfigurations[x].ProfileName == connection[cindex].profile) { amtPassword = rcsConfig.AMTConfigurations[x].AMTPassword; match = true; break;} // Got a match, set AMT Profile Password in rcsObj
         }
         if (!match) {
             // An AMT profile was specified but it doesn't match any of the profile names in rcs-config.json.  Send warning to console and default to first AMT profile listed.
             console.log((new Date()) + ' Specified AMT profile name does not match list of available AMT profiles.  Setting AMT password to default AMT profile.');
-            rcsObj.amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword
+            amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword
         }
     }
+    rcsObj.passwordHash == crypto.createHash('md5').update('admin:' + connection[cindex].digestrealm + ':' + amtPassword).digest("hex").substring(0, 32);
     if (rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== "") {
         try { rcsObj.profileScript = fs.readFileSync(rcsConfig.AMTConfigurations[cindex].ConfigurationScript, 'utf8'); }
         catch (e) { rcsObj.profileScript = ''; }
