@@ -81,7 +81,8 @@ function wsConnectionHandler(event, message, index) {
                 connection[index]["digestrealm"] = message.data.digestrealm;
             }
             if (message.data.fwnonce) {
-                connection[index]["fwnonce"] = Buffer.from(message.data.fwnonce);
+                connection[index]["fwnonce"] = Buffer.from(message.data.fwnonce, 'base64');
+                console.log(connection[index].fwnonce);
             }
             if (message.data == 'acm' || message.data.cmd == 'acm') {
                 var rcsObj = remoteConfiguration(connection[index].fwnonce, index);
@@ -131,7 +132,6 @@ function remoteConfiguration(fwNonce, cindex) {
     var dnsSuffix = null;
     // Check the connection array if the dnssuffix is set for this connection.  If not leave null and hope the default AMT provisioning certificate matches the AMT DNS Suffix.
     if (connection[cindex] && connection[cindex].dnssuffix) { dnsSuffix = connection[cindex].dnssuffix; }
-    console.log(dnsSuffix);
     rcsObj.provCertObj = getProvisioningCertObj(dnsSuffix);
     privateKey = rcsObj.provCertObj.privateKey;
     // Removes the private key information from the certificate object - don't send private key to the client!!
@@ -158,16 +158,13 @@ function remoteConfiguration(fwNonce, cindex) {
             amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword
         }
     }
-    console.log(amtPassword);
-    console.log(connection[cindex].digestrealm);
-    var data = 'admin:' + connection[cindex].digestrealm + ':' + amtPassword;
-    rcsObj.passwordHash = crypto.createHash('md5').update(data).digest("hex");
-    console.log(rcsObj.passwordHash);
-    if (rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== "") {
+    var data = 'admin:' + connection[cindex].digestrealm  + ':' + amtPassword;
+    rcsObj.passwordHash = crypto.createHash('md5').update(data).digest('hex');
+    if (rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== null) {
         try { rcsObj.profileScript = fs.readFileSync(rcsConfig.AMTConfigurations[cindex].ConfigurationScript, 'utf8'); }
-        catch (e) { rcsObj.profileScript = ''; }
+        catch (e) { rcsObj.profileScript = null; }
     }
-    console.log(JSON.stringify(rcsObj));
+    //console.log(JSON.stringify(rcsObj));
     return rcsObj;
 }
 

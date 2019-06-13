@@ -11,12 +11,12 @@
     {
       "ProfileName": "default",
       "AMTPassword": "password",
-      "ConfigurationScript": ""
+      "ConfigurationScript": null
     },
     {
       "ProfileName": "config2",
       "AMTPassword": "P@ssw0rd",
-      "ConfigurationScript": ""
+      "ConfigurationScript": null
     }
   ],
   "AMTDomains": [
