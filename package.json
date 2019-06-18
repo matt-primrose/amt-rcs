@@ -13,5 +13,8 @@
     "openssl": "^1.1.0",
     "websocket": "^1.0.28",
     "ws": "^7.0.0"
+  },
+  "devDependencies": {
+    "jsdoc": "^3.6.2"
   }
 }

@@ -1,4 +1,32 @@
-/*
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Source: amt-rcs.js</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Source: amt-rcs.js</h1>
+
+    
+
+
+
+    
+    <section>
+        <article>
+            <pre class="prettyprint source linenums"><code>/*
 Copyright 2019 Intel Corporation
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,7 +94,7 @@ function wsConnectionHandler(event, message, index) {
             try { message.data = JSON.parse(message.data); }
             catch (e) { message.data = message.data; }
         }
-        if (message.data.type && message.data.type == 'Buffer') { message.data = Buffer.from(message.data); }
+        if (message.data.type &amp;&amp; message.data.type == 'Buffer') { message.data = Buffer.from(message.data); }
     }
     switch (event) {
         // Handles 'cmd' messages
@@ -95,7 +123,7 @@ function wsConnectionHandler(event, message, index) {
                 var rcsObj = remoteConfiguration(message.data, index);
                 sendMessage(index, "ok", "message", rcsObj);
             } else {
-                if (message.data.Header && message.data.Header.HttpError) { console.log((new Date()) + ' Http Error from client: ' + message.data.Header.HttpError); }
+                if (message.data.Header &amp;&amp; message.data.Header.HttpError) { console.log((new Date()) + ' Http Error from client: ' + message.data.Header.HttpError); }
                 else if (message.data.ReturnValueStr) { console.log((new Date()) + ' Configuration Result from client: ' + message.data.ReturnValueStr); }
             }
             break;*/
@@ -131,7 +159,7 @@ function remoteConfiguration(fwNonce, cindex) {
     // Gets all of the certificate information needed by AMT
     var dnsSuffix = null;
     // Check the connection array if the dnsSuffix is set for this connection.  If not leave null and hope the default AMT provisioning certificate matches the AMT DNS Suffix.
-    if (connection[cindex] && connection[cindex].dnsSuffix) { dnsSuffix = connection[cindex].dnsSuffix; }
+    if (connection[cindex] &amp;&amp; connection[cindex].dnsSuffix) { dnsSuffix = connection[cindex].dnsSuffix; }
     rcsObj.provCertObj = getProvisioningCertObj(dnsSuffix);
     if (rcsObj.provCertObj == null) {
         return null;
@@ -152,7 +180,7 @@ function remoteConfiguration(fwNonce, cindex) {
     if (!connection[cindex] || !connection[cindex].profile || connection[cindex].profile == "" || connection[cindex].profile == null) { amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword; }  // If profile is not specified, set the profile to the first profile in rcs-config.json
     else {
         var match = false;
-        for (var x = 0; x < rcsConfig.AMTConfigurations.length; x++) {
+        for (var x = 0; x &lt; rcsConfig.AMTConfigurations.length; x++) {
             if (rcsConfig.AMTConfigurations[x].ProfileName == connection[cindex].profile) { amtPassword = rcsConfig.AMTConfigurations[x].AMTPassword; match = true; break;} // Got a match, set AMT Profile Password in rcsObj
         }
         if (!match) {
@@ -184,7 +212,7 @@ function getProvisioningCertObj(domain) {
         certpass = rcsConfig.AMTDomains[0].ProvisioningCertPassword;
     } else {
         var match = false;
-        for (var x = 0; x < rcsConfig.AMTDomains.length; x++) {
+        for (var x = 0; x &lt; rcsConfig.AMTDomains.length; x++) {
             if (rcsConfig.AMTDomains[x].DomainSuffix == domain) {
                 // Got a match, set AMT Provisioning certificate and key
                 cert = rcsConfig.AMTDomains[x].ProvisioningCert;
@@ -222,14 +250,14 @@ function convertPfxToObject(pfxpath, passphrase) {
         var pfx = forge.pkcs12.pkcs12FromAsn1(asn, true, passphrase);
         // Get the certs from certbags
         var bags = pfx.getBags({ bagType: forge.pki.oids.certBag });
-        for (var i = 0; i < bags[forge.pki.oids.certBag].length; i++) {
+        for (var i = 0; i &lt; bags[forge.pki.oids.certBag].length; i++) {
             // dump cert into DER
             var cert = bags[forge.pki.oids.certBag][i];
             pfx_out.certs.push(cert.cert);
         }
         // get shrouded key from key bags
         bags = pfx.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
-        for (var i = 0; i < bags[forge.pki.oids.pkcs8ShroudedKeyBag].length; i++) {
+        for (var i = 0; i &lt; bags[forge.pki.oids.pkcs8ShroudedKeyBag].length; i++) {
             // dump cert into DER
             var cert = bags[forge.pki.oids.pkcs8ShroudedKeyBag][i];
             pfx_out.keys.push(cert.key);
@@ -247,8 +275,8 @@ function dumpPfx(pfxobj) {
     var provisioningCertificateObj = {};
     var certObj = {};
     if (pfxobj) {
-        if (pfxobj.certs && Array.isArray(pfxobj.certs)) {
-            for (var i = 0; i < pfxobj.certs.length; i++) {
+        if (pfxobj.certs &amp;&amp; Array.isArray(pfxobj.certs)) {
+            for (var i = 0; i &lt; pfxobj.certs.length; i++) {
                 var cert = pfxobj.certs[i];
                 var pem = forge.pki.certificateToPem(cert);
                 //Need to trim off the BEGIN and END so we just have the raw pem
@@ -266,8 +294,8 @@ function dumpPfx(pfxobj) {
         if (certObj['inter3'] !== undefined) { provisioningCertificateObj['certChain'].push(certObj['inter3']); }
         provisioningCertificateObj['certChain'].push(certObj['inter2']);
         provisioningCertificateObj['certChain'].push(certObj['root']);
-        if (pfxobj.keys && Array.isArray(pfxobj.keys)) {
-            for (var i = 0; i < pfxobj.keys.length; i++) {
+        if (pfxobj.keys &amp;&amp; Array.isArray(pfxobj.keys)) {
+            for (var i = 0; i &lt; pfxobj.keys.length; i++) {
                 var key = pfxobj.keys[i];
                 //Just need the key in key format for signing.  Keeping the private key in memory only.
                 provisioningCertificateObj['privateKey'] = key;
@@ -326,4 +354,26 @@ function sendMessage(index, status, event, message) {
     var obj = { "version": RCSMessageProtocolVersion, "status": status, "event": event, "data": message };
     wsServer.sendMessage(index, obj);
 }
-rcs();
+rcs();</code></pre>
+        </article>
+    </section>
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Global</h3><ul><li><a href="global.html#convertPfxToObject">convertPfxToObject</a></li><li><a href="global.html#dumpPfx">dumpPfx</a></li><li><a href="global.html#generateMcnonce">generateMcnonce</a></li><li><a href="global.html#getProvisioningCertObj">getProvisioningCertObj</a></li><li><a href="global.html#rcs">rcs</a></li><li><a href="global.html#remoteConfiguration">remoteConfiguration</a></li><li><a href="global.html#sendMessage">sendMessage</a></li><li><a href="global.html#signString">signString</a></li><li><a href="global.html#startWebSocketServer">startWebSocketServer</a></li><li><a href="global.html#verifyString">verifyString</a></li><li><a href="global.html#wsConnectionHandler">wsConnectionHandler</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.2</a> on Tue Jun 18 2019 13:52:56 GMT-0700 (Mountain Standard Time)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>
