@@ -74,18 +74,18 @@ function wsConnectionHandler(event, message, index) {
             if (message.data.profile) {
                 connection[index]["profile"] = message.data.profile;
             }
-            if (message.data.dnssuffix) {
-                connection[index]["dnssuffix"] = message.data.dnssuffix;
+            if (message.data.dnsSuffix) {
+                connection[index]["dnsSuffix"] = message.data.dnsSuffix;
             }
-            if (message.data.digestrealm) {
-                connection[index]["digestrealm"] = message.data.digestrealm;
+            if (message.data.digestRealm) {
+                connection[index]["digestRealm"] = message.data.digestRealm;
             }
-            if (message.data.fwnonce) {
-                connection[index]["fwnonce"] = Buffer.from(message.data.fwnonce, 'base64');
-                console.log(connection[index].fwnonce);
+            if (message.data.fwNonce) {
+                connection[index]["fwNonce"] = Buffer.from(message.data.fwNonce, 'base64');
             }
             if (message.data == 'acm' || message.data.cmd == 'acm') {
-                var rcsObj = remoteConfiguration(connection[index].fwnonce, index);
+                var rcsObj = remoteConfiguration(connection[index].fwNonce, index);
+                if (rcsObj == null) { sendMessage(index, "error", "error", "Failed to get rcsObj");}
                 sendMessage(index, "ok", "message", rcsObj);
             }
             break;
@@ -130,15 +130,18 @@ function remoteConfiguration(fwNonce, cindex) {
     var privateKey;
     // Gets all of the certificate information needed by AMT
     var dnsSuffix = null;
-    // Check the connection array if the dnssuffix is set for this connection.  If not leave null and hope the default AMT provisioning certificate matches the AMT DNS Suffix.
-    if (connection[cindex] && connection[cindex].dnssuffix) { dnsSuffix = connection[cindex].dnssuffix; }
+    // Check the connection array if the dnsSuffix is set for this connection.  If not leave null and hope the default AMT provisioning certificate matches the AMT DNS Suffix.
+    if (connection[cindex] && connection[cindex].dnsSuffix) { dnsSuffix = connection[cindex].dnsSuffix; }
     rcsObj.provCertObj = getProvisioningCertObj(dnsSuffix);
+    if (rcsObj.provCertObj == null) {
+        return null;
+    }
     privateKey = rcsObj.provCertObj.privateKey;
     // Removes the private key information from the certificate object - don't send private key to the client!!
     delete rcsObj.provCertObj.privateKey;
     // Create a one time nonce that allows AMT to verify the digital signature
     rcsObj.mcNonce = generateMcnonce();
-    // Need to create a new array so we can concatinate both nonces (FWNonce first, McNonce second)
+    // Need to create a new array so we can concatinate both nonces (fwNonce first, McNonce second)
     var arr = [fwNonce, rcsObj.mcNonce];
     // mcNonce needs to be in base64 format to successfully send over WebSocket connection
     rcsObj.mcNonce = rcsObj.mcNonce.toString('base64');
@@ -158,7 +161,7 @@ function remoteConfiguration(fwNonce, cindex) {
             amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword
         }
     }
-    var data = 'admin:' + connection[cindex].digestrealm  + ':' + amtPassword;
+    var data = 'admin:' + connection[cindex].digestRealm  + ':' + amtPassword;
     rcsObj.passwordHash = crypto.createHash('md5').update(data).digest('hex');
     if (rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== null) {
         try { rcsObj.profileScript = fs.readFileSync(rcsConfig.AMTConfigurations[cindex].ConfigurationScript, 'utf8'); }
@@ -211,7 +214,7 @@ function getProvisioningCertObj(domain) {
  */
 function convertPfxToObject(pfxpath, passphrase) {
     var pfx_out = { certs: [], keys: [] };
-    var pfxbuf = fs.readFileSync(pfxpath);
+    var pfxbuf = function () { try { return fs.readFileSync(pfxpath); } catch (e) { return null; }
     var pfxb64 = Buffer.from(pfxbuf).toString('base64');
     var pfxder = forge.util.decode64(pfxb64);
     var asn = forge.asn1.fromDer(pfxder);
