@@ -83,22 +83,15 @@ function wsConnectionHandler(event, message, index) {
             if (message.data.fwNonce) {
                 connection[index]["fwNonce"] = Buffer.from(message.data.fwNonce, 'base64');
             }
+            if (message.data.certHashes) {
+                connection[index]["certHashes"] = message.data.certHashes;
+            }
             if (message.data == 'acm' || message.data.cmd == 'acm') {
                 var rcsObj = remoteConfiguration(connection[index].fwNonce, index);
-                if (rcsObj == null) { sendMessage(index, "error", "error", "Failed to get rcsObj");}
+                if (rcsObj.error) { sendMessage(index, "error", "error", rcsObj.error);}
                 sendMessage(index, "ok", "message", rcsObj);
             }
             break;
-        // Handles 'message' type messages - these are typically buffer or object messages
-        /*case 'message':
-            if (Buffer.isBuffer(message.data)) {
-                var rcsObj = remoteConfiguration(message.data, index);
-                sendMessage(index, "ok", "message", rcsObj);
-            } else {
-                if (message.data.Header && message.data.Header.HttpError) { console.log((new Date()) + ' Http Error from client: ' + message.data.Header.HttpError); }
-                else if (message.data.ReturnValueStr) { console.log((new Date()) + ' Configuration Result from client: ' + message.data.ReturnValueStr); }
-            }
-            break;*/
         // Handles 'error' type messages
         case 'error':
             console.log('AMT Device ' + index + ' received "error" message: ' + message.data);
@@ -132,9 +125,9 @@ function remoteConfiguration(fwNonce, cindex) {
     var dnsSuffix = null;
     // Check the connection array if the dnsSuffix is set for this connection.  If not leave null and hope the default AMT provisioning certificate matches the AMT DNS Suffix.
     if (connection[cindex] && connection[cindex].dnsSuffix) { dnsSuffix = connection[cindex].dnsSuffix; }
-    rcsObj.provCertObj = getProvisioningCertObj(dnsSuffix);
-    if (rcsObj.provCertObj == null) {
-        return null;
+    rcsObj.provCertObj = getProvisioningCertObj(dnsSuffix, cindex);
+    if (rcsObj.provCertObj.error) {
+        return rcsObj.provCertObj;
     }
     privateKey = rcsObj.provCertObj.privateKey;
     // Removes the private key information from the certificate object - don't send private key to the client!!
@@ -176,7 +169,7 @@ function remoteConfiguration(fwNonce, cindex) {
  * @param {string} domain DNS Suffix of AMT device
  * @returns {object} Returns the provisioning certificate object
  */
-function getProvisioningCertObj(domain) {
+function getProvisioningCertObj(domain, index) {
     var cert, certpass;
     if (domain == null || domain == '') {
         // If no domain is specified, default to the first AMT domain specified in rcs-config.json
@@ -200,10 +193,19 @@ function getProvisioningCertObj(domain) {
             certpass = rcsConfig.AMTDomains[0].ProvisioningCertPassword;
         }
     }
+    // Verify that the certificate path points to a file that exists
+    var certFound = false;
+    try {
+        if (fs.existsSync(cert)) {
+            certFound = true;
+        }
+    } catch (e) { }
+    if (certFound == false) {
+        return { error: "AMT Provisioning Certificate not found on server" }; }
     // convert the certificate pfx to an object
     var pfxobj = convertPfxToObject(cert, certpass);
     // return the certificate chain pems and private key
-    return dumpPfx(pfxobj);
+    return dumpPfx(pfxobj, index);
 }
 
 /**
@@ -214,28 +216,26 @@ function getProvisioningCertObj(domain) {
  */
 function convertPfxToObject(pfxpath, passphrase) {
     var pfx_out = { certs: [], keys: [] };
-    var pfxbuf = function () {
-        try { return fs.readFileSync(pfxpath); } catch (e) { return null; }
-        var pfxb64 = Buffer.from(pfxbuf).toString('base64');
-        var pfxder = forge.util.decode64(pfxb64);
-        var asn = forge.asn1.fromDer(pfxder);
-        var pfx = forge.pkcs12.pkcs12FromAsn1(asn, true, passphrase);
-        // Get the certs from certbags
-        var bags = pfx.getBags({ bagType: forge.pki.oids.certBag });
-        for (var i = 0; i < bags[forge.pki.oids.certBag].length; i++) {
-            // dump cert into DER
-            var cert = bags[forge.pki.oids.certBag][i];
-            pfx_out.certs.push(cert.cert);
-        }
-        // get shrouded key from key bags
-        bags = pfx.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
-        for (var i = 0; i < bags[forge.pki.oids.pkcs8ShroudedKeyBag].length; i++) {
-            // dump cert into DER
-            var cert = bags[forge.pki.oids.pkcs8ShroudedKeyBag][i];
-            pfx_out.keys.push(cert.key);
-        }
-        return pfx_out;
+    var pfxbuf = fs.readFileSync(pfxpath);
+    var pfxb64 = Buffer.from(pfxbuf).toString('base64');
+    var pfxder = forge.util.decode64(pfxb64);
+    var asn = forge.asn1.fromDer(pfxder);
+    var pfx = forge.pkcs12.pkcs12FromAsn1(asn, true, passphrase);
+    // Get the certs from certbags
+    var bags = pfx.getBags({ bagType: forge.pki.oids.certBag });
+    for (var i = 0; i < bags[forge.pki.oids.certBag].length; i++) {
+        // dump cert into DER
+        var cert = bags[forge.pki.oids.certBag][i];
+        pfx_out.certs.push(cert.cert);
     }
+    // get shrouded key from key bags
+    bags = pfx.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
+    for (var i = 0; i < bags[forge.pki.oids.pkcs8ShroudedKeyBag].length; i++) {
+        // dump cert into DER
+        var cert = bags[forge.pki.oids.pkcs8ShroudedKeyBag][i];
+        pfx_out.keys.push(cert.key);
+    }
+    return pfx_out;
 }
 
 /**
@@ -243,10 +243,11 @@ function convertPfxToObject(pfxpath, passphrase) {
     * @param {object} pfxobj Certificate object from convertPfxToObject function
     * @returns {object} Returns provisioning certificiate object with certificate chain in proper order
     */
-function dumpPfx(pfxobj) {
+function dumpPfx(pfxobj, index) {
     var provisioningCertificateObj = {};
     var certObj = {};
     if (pfxobj) {
+        var fingerprint;
         if (pfxobj.certs && Array.isArray(pfxobj.certs)) {
             for (var i = 0; i < pfxobj.certs.length; i++) {
                 var cert = pfxobj.certs[i];
@@ -257,7 +258,13 @@ function dumpPfx(pfxobj) {
                 // pem = pem.replace(/(\r\n|\n|\r)/g, '');
                 // Index 0 = Leaf, Index 1 = Root, rest are Intermediate.  Inject in reverse order (Leaf, last Intermediate, previous Intermediate, ..., Root)
                 if (i == 0) { certObj['leaf'] = pem; }
-                else if (i == 1) { certObj['root'] = pem; }
+                else if (i == 1) {
+                    certObj['root'] = pem;
+                    var der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
+                    var md = forge.md.sha256.create();
+                    md.update(der);
+                    fingerprint = md.digest().toHex().toUpperCase();
+                }
                 else { certObj['inter' + i] = pem; }
             }
         }
@@ -273,7 +280,13 @@ function dumpPfx(pfxobj) {
                 provisioningCertificateObj['privateKey'] = key;
             }
         }
-        return provisioningCertificateObj;
+        // Check that provisioning certificate root matches one of the trusted roots from AMT
+        for (var x = 0; x < connection[index].certHashes.length; x++) {
+            if (connection[index].certHashes[x].certificateHash == fingerprint) {
+                return provisioningCertificateObj;
+            } 
+        }
+        return { error: "Provisioning Certificate doesn't match any trusted certificates from AMT" };
     }
 }
 
