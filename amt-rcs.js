@@ -249,13 +249,15 @@ function convertPfxToObject(pfxpath, passphrase) {
 }
 
 /**
-    * @description Pulls the provisioning certificate apart and exports each PEM for injecting into AMT
+    * @description Pulls the provisioning certificate apart and exports each PEM for injecting into AMT.  Only supports certificate chains up to 4 certificates long
     * @param {object} pfxobj Certificate object from convertPfxToObject function
     * @returns {object} Returns provisioning certificiate object with certificate chain in proper order
     */
 function dumpPfx(pfxobj, index) {
     var provisioningCertificateObj = {};
-    var certObj = {};
+    var interObj = [];
+    var leaf = {};
+    var root = {};
     if (pfxobj) {
         var fingerprint;
         if (pfxobj.certs && Array.isArray(pfxobj.certs)) {
@@ -266,23 +268,45 @@ function dumpPfx(pfxobj, index) {
                 pem = pem.replace('-----BEGIN CERTIFICATE-----', '');
                 pem = pem.replace('-----END CERTIFICATE-----', '');
                 // pem = pem.replace(/(\r\n|\n|\r)/g, '');
-                // Index 0 = Leaf, Index 1 = Root, rest are Intermediate.  Inject in reverse order (Leaf, last Intermediate, previous Intermediate, ..., Root)
-                if (i == 0) { certObj['leaf'] = pem; }
-                else if (i == 1) {
-                    certObj['root'] = pem;
+                // Index 0 = Leaf, Root subject.hash will match issuer.hash, rest are Intermediate.
+                if (i == 0) {
+                    leaf['pem'] = pem;
+                    leaf['subject'] = cert.subject.hash;
+                    leaf['issuer'] = cert.issuer.hash;
+                }
+                else if (cert.subject.hash == certs.issuer.hash) {
+                    root['pem'] = pem;
+                    root['subject'] = cert.subject.hash;
+                    root['issuer'] = cert.issuer.hash;
                     var der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
                     var md = forge.md.sha256.create();
                     md.update(der);
                     fingerprint = md.digest().toHex().toUpperCase();
                 }
-                else { certObj['inter' + i] = pem; }
+                else {
+                    interObj.push({ 'pem': pem, 'subject': cert.subject.hash, 'issuer': cert.issuer.hash });
+                }
             }
         }
+        // Need to put the certificate PEMs in the correct order before sending to AMT.  
+        // This currently only supports certificate chains that are no more than 4 certificates long
         provisioningCertificateObj['certChain'] = [];
-        provisioningCertificateObj['certChain'].push(certObj['leaf']);
-        if (certObj['inter3'] !== undefined) { provisioningCertificateObj['certChain'].push(certObj['inter3']); }
-        provisioningCertificateObj['certChain'].push(certObj['inter2']);
-        provisioningCertificateObj['certChain'].push(certObj['root']);
+        // Leaf PEM is first
+        provisioningCertificateObj.certChain.push(leaf.pem);
+        // Need to figure out which Intermediate PEM is next to the Leaf PEM
+        for (var k = 0; k < interObj.length; k++) {
+            if (!sortCertificate(interObj[k], root)) {
+                provisioningCertificateObj.certChain.push(interObj[k].pem);
+            }
+        }
+        // Need to figure out which Intermediate PEM is next to the Root PEM
+        for (var l = 0; l < interObj.length; l++) {
+            if (sortCertificate(interObj[l], root)) {
+                provisioningCertificateObj.certChain.push(interObj[l].pem);
+            }
+        }
+        // Root PEM goes in last
+        provisioningCertificateObj.certChain.push(root.pem);
         if (pfxobj.keys && Array.isArray(pfxobj.keys)) {
             for (var i = 0; i < pfxobj.keys.length; i++) {
                 var key = pfxobj.keys[i];
@@ -297,6 +321,20 @@ function dumpPfx(pfxobj, index) {
             } 
         }
         return { error: "Provisioning Certificate doesn't match any trusted certificates from AMT" };
+    }
+}
+
+/**
+ * @description Sorts the intermediate certificates to properly order the certificate chain
+ * @param {Object} intermediate
+ * @param {Object} root
+ * @returns {Boolean} Returns true if issuer is from root.  Returns false if issuer is not from root.
+ */
+function sortCertificate(intermediate, root) {
+    if (intermediate.issuer == root.subject) {
+        return true;
+    } else {
+        return false;
     }
 }
 
