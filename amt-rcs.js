@@ -88,7 +88,7 @@ function wsConnectionHandler(event, message, index) {
             }
             if (message.data == 'acm' || message.data.cmd == 'acm') {
                 var rcsObj = remoteConfiguration(connection[index].fwNonce, index);
-                if (rcsObj.error) { sendMessage(index, "error", "error", rcsObj.error);}
+                if (rcsObj.error) { console.log((new Date()) + ' ' + rcsObj.error); sendMessage(index, "error", "error", rcsObj.error); }
                 sendMessage(index, "ok", "message", rcsObj);
             }
             break;
@@ -118,49 +118,54 @@ function wsConnectionHandler(event, message, index) {
  * @param {number} cindex Connection index of the device sending the message
  * @returns {object} returns the configuration object to be passed down to AMT
  */
-function remoteConfiguration(fwNonce, cindex) {   
+function remoteConfiguration(fwNonce, cindex) {
     var rcsObj = {};
-    var privateKey;
+    // Verify we have a valid connection index and error out if we do not
+    if (!connection[cindex]) { rcsObj = { error: "WebSocket connection not found in list of connected clients." }; return rcsObj; }
     // Gets all of the certificate information needed by AMT
     var dnsSuffix = null;
-    // Check the connection array if the dnsSuffix is set for this connection.  If not leave null and hope the default AMT provisioning certificate matches the AMT DNS Suffix.
-    if (connection[cindex] && connection[cindex].dnsSuffix) { dnsSuffix = connection[cindex].dnsSuffix; }
+    // Check the connection array if the dnsSuffix is set for this connection.
+    if (connection[cindex].dnsSuffix) { dnsSuffix = connection[cindex].dnsSuffix; }
     rcsObj.provCertObj = getProvisioningCertObj(dnsSuffix, cindex);
-    if (rcsObj.provCertObj.error) {
-        return rcsObj.provCertObj;
-    }
-    privateKey = rcsObj.provCertObj.privateKey;
+    // Check if we got an error while getting the provisioning cert object
+    if (rcsObj.provCertObj.error) { return rcsObj.provCertObj; }
+    var privateKey = rcsObj.provCertObj.privateKey;
     // Removes the private key information from the certificate object - don't send private key to the client!!
     delete rcsObj.provCertObj.privateKey;
-    // Create a one time nonce that allows AMT to verify the digital signature
+    // Create a one time nonce that allows AMT to verify the digital signature of the management console performing the provisioning
     rcsObj.mcNonce = generateMcnonce();
     // Need to create a new array so we can concatinate both nonces (fwNonce first, McNonce second)
     var arr = [fwNonce, rcsObj.mcNonce];
-    // mcNonce needs to be in base64 format to successfully send over WebSocket connection
+    // mcNonce needs to be in base64 format to send over WebSocket connection
     rcsObj.mcNonce = rcsObj.mcNonce.toString('base64');
     // Then we need to sign the concatinated nonce with the private key of the provisioning certificate and encode as base64.
     rcsObj.digitalSignature = signString(Buffer.concat(arr), privateKey);
+    if (rcsObj.digitalSignature.error) { return rcsObj.digitalSignature; }
     // Grab the AMT password from the specified profile in rcsConfig file and add that to the rcsObj so we can set the new MEBx password
     var amtPassword
-    if (!connection[cindex] || !connection[cindex].profile || connection[cindex].profile == "" || connection[cindex].profile == null) { amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword; }  // If profile is not specified, set the profile to the first profile in rcs-config.json
+    if (!connection[cindex].profile || connection[cindex].profile == "" || connection[cindex].profile == null) { amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword; }  // If profile is not specified, set the profile to the first profile in rcs-config.json
     else {
         var match = false;
         for (var x = 0; x < rcsConfig.AMTConfigurations.length; x++) {
-            if (rcsConfig.AMTConfigurations[x].ProfileName == connection[cindex].profile) { amtPassword = rcsConfig.AMTConfigurations[x].AMTPassword; match = true; break;} // Got a match, set AMT Profile Password in rcsObj
+            if (rcsConfig.AMTConfigurations[x].ProfileName == connection[cindex].profile) {
+                // Got a match, set AMT Profile Password in rcsObj
+                amtPassword = rcsConfig.AMTConfigurations[x].AMTPassword;
+                match = true;
+                break;
+            } 
         }
         if (!match) {
             // An AMT profile was specified but it doesn't match any of the profile names in rcs-config.json.  Send warning to console and default to first AMT profile listed.
-            console.log((new Date()) + ' Specified AMT profile name does not match list of available AMT profiles.  Setting AMT password to default AMT profile.');
-            amtPassword = rcsConfig.AMTConfigurations[0].AMTPassword
+            console.log((new Date()) + ' Specified AMT profile name does not match list of available AMT profiles.');
+            return { error: "Specified AMT profile name does not match list of available AMT profiles." };
         }
     }
     var data = 'admin:' + connection[cindex].digestRealm  + ':' + amtPassword;
     rcsObj.passwordHash = crypto.createHash('md5').update(data).digest('hex');
-    if (rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== null) {
+    if (rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== null && rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== "") {
         try { rcsObj.profileScript = fs.readFileSync(rcsConfig.AMTConfigurations[cindex].ConfigurationScript, 'utf8'); }
         catch (e) { rcsObj.profileScript = null; }
     }
-    //console.log(JSON.stringify(rcsObj));
     return rcsObj;
 }
 
@@ -172,9 +177,8 @@ function remoteConfiguration(fwNonce, cindex) {
 function getProvisioningCertObj(domain, index) {
     var cert, certpass;
     if (domain == null || domain == '') {
-        // If no domain is specified, default to the first AMT domain specified in rcs-config.json
-        cert = rcsConfig.AMTDomains[0].ProvisioningCert;
-        certpass = rcsConfig.AMTDomains[0].ProvisioningCertPassword;
+        // If no domain is specified, return error.
+        return { error: "AMT domain suffix not specified." };
     } else {
         var match = false;
         for (var x = 0; x < rcsConfig.AMTDomains.length; x++) {
@@ -187,10 +191,9 @@ function getProvisioningCertObj(domain, index) {
             } 
         }
         if (!match) {
-            // An AMT domain suffix was specified but it doesn't match any of the domain suffix specified in rcs-config.json.  Send warning to console and default to try to use first AMT domain suffix listed.
-            console.log((new Date()) + ' Specified AMT domain suffix does not match list of available AMT domain suffixes.  Setting AMT provisioning certificate to default AMT provisioning certificate.');
-            cert = rcsConfig.AMTDomains[0].ProvisioningCert;
-            certpass = rcsConfig.AMTDomains[0].ProvisioningCertPassword;
+            // An AMT domain suffix was specified but it doesn't match any of the domain suffix specified in rcs-config.json.
+            console.log((new Date()) + ' Specified AMT domain suffix does not match list of available AMT domain suffixes.');
+            return { error: "Specified AMT domain suffix does not match list of available AMT domain suffixes." };
         }
     }
     // Verify that the certificate path points to a file that exists
@@ -204,6 +207,7 @@ function getProvisioningCertObj(domain, index) {
         return { error: "AMT Provisioning Certificate not found on server" }; }
     // convert the certificate pfx to an object
     var pfxobj = convertPfxToObject(cert, certpass);
+    if (pfxobj.error) { return pfxobj; }
     // return the certificate chain pems and private key
     return dumpPfx(pfxobj, index);
 }
@@ -220,7 +224,12 @@ function convertPfxToObject(pfxpath, passphrase) {
     var pfxb64 = Buffer.from(pfxbuf).toString('base64');
     var pfxder = forge.util.decode64(pfxb64);
     var asn = forge.asn1.fromDer(pfxder);
-    var pfx = forge.pkcs12.pkcs12FromAsn1(asn, true, passphrase);
+    var pfx;
+    try {
+        pfx = forge.pkcs12.pkcs12FromAsn1(asn, true, passphrase);
+    } catch (e) {
+        return { error: "Decrypting provisining certificate failed." };
+    }
     // Get the certs from certbags
     var bags = pfx.getBags({ bagType: forge.pki.oids.certBag });
     for (var i = 0; i < bags[forge.pki.oids.certBag].length; i++) {
@@ -318,11 +327,16 @@ function verifyString(message, cert, sign) {
     * @returns {string} Returns the signed string
     */
 function signString(message, key) {
-    var crypto = require('crypto');
-    var signer = crypto.createSign('sha256');
-    signer.update(message);
-    var sign = signer.sign(forge.pki.privateKeyToPem(key), 'base64');
-    return sign;
+    try {
+        var crypto = require('crypto');
+        var signer = crypto.createSign('sha256');
+        signer.update(message);
+        var sign = signer.sign(forge.pki.privateKeyToPem(key), 'base64');
+        return sign;
+    } catch (e) {
+        return { error: "Unable to create Digital Signature" };
+    }
+    
 }
 
 /**
