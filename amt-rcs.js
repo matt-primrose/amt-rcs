@@ -274,7 +274,7 @@ function dumpPfx(pfxobj, index) {
                     leaf['subject'] = cert.subject.hash;
                     leaf['issuer'] = cert.issuer.hash;
                 }
-                else if (cert.subject.hash == certs.issuer.hash) {
+                else if (cert.subject.hash == cert.issuer.hash) {
                     root['pem'] = pem;
                     root['subject'] = cert.subject.hash;
                     root['issuer'] = cert.issuer.hash;
