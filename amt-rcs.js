@@ -162,6 +162,7 @@ function remoteConfiguration(fwNonce, cindex) {
     }
     var data = 'admin:' + connection[cindex].digestRealm  + ':' + amtPassword;
     rcsObj.passwordHash = crypto.createHash('md5').update(data).digest('hex');
+    rcsObj.profileScript = null;
     if (rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== null && rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== "") {
         try { rcsObj.profileScript = fs.readFileSync(rcsConfig.AMTConfigurations[cindex].ConfigurationScript, 'utf8'); }
         catch (e) { rcsObj.profileScript = null; }
