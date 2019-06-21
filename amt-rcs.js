@@ -22,7 +22,11 @@ limitations under the License.
 */
 
 'use strict'
-
+const forge = require('node-forge');
+const fs = require('fs');
+const crypto = require('crypto');
+const websocket = require('./wsserver');
+const RCSMessageProtocolVersion = 1; // RCS Message Protocol Version.
 /**
  * @description Creates and returns an instance of the RCS object
  * @param {JSON} config RCS configuration JSON object.
@@ -31,11 +35,7 @@ limitations under the License.
  * @param {Object} db (Optional) Database callback.
  */
 function CreateRcs(config, ws, logger, db) {
-    const forge = require('node-forge');
-    const fs = require('fs');
-    const crypto = require('crypto');
-    const websocket = require('./wsserver');
-    const RCSMessageProtocolVersion = 1; // RCS Message Protocol Version.
+
     var obj = new Object();    
     obj.rcsConfig = config;
     obj.wsServer = ws;
@@ -108,7 +108,7 @@ function CreateRcs(config, ws, logger, db) {
                 if (message.data == 'acm' || message.data.cmd == 'acm') {
                     var rcsObj = obj.remoteConfiguration(obj.connection[index].fwNonce, index);
                     if (rcsObj.error) { obj.output(rcsObj.error); sendMessage(index, "error", "error", rcsObj.error); }
-                    sendMessage(index, "ok", "message", rcsObj);
+                    obj.sendMessage(index, "ok", "message", rcsObj);
                 }
                 if (obj.db) { obj.db(obj.connection[index]); }
                 break;
@@ -323,8 +323,8 @@ function CreateRcs(config, ws, logger, db) {
     obj.sendMessage = function(index, status, event, message) {
         if (obj.wsServer == null) { obj.output('WebSocket Server not initialized.'); }
         if (status == null) { status = 'ok'; }
-        var obj = { "version": RCSMessageProtocolVersion, "status": status, "event": event, "data": message };
-        obj.wsServer.sendMessage(index, obj);
+        var msg = { "version": RCSMessageProtocolVersion, "status": status, "event": event, "data": message };
+        obj.wsServer.sendMessage(index, msg);
     }
 
     return obj;

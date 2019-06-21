@@ -18,7 +18,7 @@ limitations under the License.
 * @description Simple script to instantiate and start the RCS service
 * @author Matt Primrose
 * @version v0.1.0
-* @dependencies
+* @dependencies fs
 */
 
 'use strict'
@@ -26,7 +26,8 @@ const fs = require('fs');
 var rcs = require('./amt-rcs');
 var config = './rcs-config.json';
 function startrcs() {
-    var rcsconfig = fs.readFile(config, 'utf8', function (err, file) {
+    fs.readFile(config, 'utf8', function (err, file) {
+        if (err) { console.log(err); process.exit(1); }
         var RS = rcs(JSON.parse(file.trim()));
         RS.start();
     });
