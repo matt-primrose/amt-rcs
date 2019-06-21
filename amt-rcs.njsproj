@@ -28,6 +28,9 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="startrcs.js">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="wsserver.js" />
     <Compile Include="amt-rcs.js" />
     <Content Include="package.json" />
