@@ -83,7 +83,7 @@ function CreateRcs(config, ws, logger, db) {
             if (message.action) { event = message.action; }
         }
         switch (event) {
-            // Handles 'cmd' messages
+            // Handles 'acmactivate' messages
             case 'acmactivate':
                 if (message.profile) { obj.connection[index]["profile"] = message.profile; }
                 if (message.fqdn) { obj.connection[index]["dnsSuffix"] = message.fqdn; }
@@ -93,7 +93,17 @@ function CreateRcs(config, ws, logger, db) {
                 if (message.uuid) { obj.connection[index]["amtGuid"] = message.uuid; }
                 if (message.tag) { obj.connection[index]["tag"] = message.tag; }
                 if (obj.db) { obj.db(obj.connection[index]); }
-                var rcsObj = obj.remoteConfiguration(obj.connection[index].fwNonce, index);
+                var rcsObj = obj.remoteConfiguration(obj.connection[index].fwNonce, index, event);
+                if (rcsObj.errorText) { obj.output(rcsObj.errorText); obj.sendMessage(index, rcsObj); }
+                obj.sendMessage(index, rcsObj);
+                break;
+            // Handles 'ccmactivate' messages
+            case 'ccmactivate':
+                if (message.profile) { obj.connection[index]["profile"] = message.profile; }
+                if (message.uuid) { obj.connection[index]["amtGuid"] = message.uuid; }
+                if (message.tag) { obj.connection[index]["tag"] = message.tag; }
+                if (obj.db) { obj.db(obj.connection[index]); }
+                var rcsObj = obj.remoteConfiguration(null, index, event);
                 if (rcsObj.errorText) { obj.output(rcsObj.errorText); obj.sendMessage(index, rcsObj); }
                 obj.sendMessage(index, rcsObj);
                 break;
@@ -123,35 +133,34 @@ function CreateRcs(config, ws, logger, db) {
      * @param {number} cindex Connection index of the device sending the message
      * @returns {object} returns the configuration object to be passed down to AMT
      */
-    obj.remoteConfiguration = function(fwNonce, cindex) {
+    obj.remoteConfiguration = function(fwNonce, cindex, event) {
         var rcsObj = {};
-        rcsObj["action"] = 'acmactivate';
-        // Verify we have a valid connection index and error out if we do not
-        if (!obj.connection[cindex]) { rcsObj = { errorText: "WebSocket connection not found in list of connected clients." }; return rcsObj; }
-        // Gets all of the certificate information needed by AMT
-        var dnsSuffix = null;
-        // Check the connection array if the dnsSuffix is set for this connection.
-        if (obj.connection[cindex].dnsSuffix) { dnsSuffix = obj.connection[cindex].dnsSuffix; }
-        rcsObj.certs = obj.getProvisioningCertObj(dnsSuffix, cindex);
-        // Check if we got an error while getting the provisioning cert object
-        if (rcsObj.certs.errorText) { return rcsObj.certs; }
-        var privateKey = rcsObj.certs.privateKey;
-        // Removes the private key information from the certificate object - don't send private key to the client!!
-        delete rcsObj.certs.privateKey;
-        rcsObj.certs = rcsObj.certs.certChain;
-        // Create a one time nonce that allows AMT to verify the digital signature of the management console performing the provisioning
-        rcsObj.nonce = generateNonce();
-        // Need to create a new array so we can concatinate both nonces (fwNonce first, Nonce second)
-        var arr = [fwNonce, rcsObj.nonce];
-        // mcNonce needs to be in base64 format to send over WebSocket connection
-        rcsObj.nonce = rcsObj.nonce.toString('base64');
-        // Then we need to sign the concatinated nonce with the private key of the provisioning certificate and encode as base64.
-        rcsObj.signature = signString(Buffer.concat(arr), privateKey);
-        if (rcsObj.signature.errorText) { return rcsObj.signature; }
-        // Grab the AMT password from the specified profile in rcsConfig file and add that to the rcsObj so we can set the new MEBx password
-        var amtPassword
-        if (!obj.connection[cindex].profile || obj.connection[cindex].profile == "" || obj.connection[cindex].profile == null) { amtPassword = obj.rcsConfig.AMTConfigurations[0].AMTPassword; }  // If profile is not specified, set the profile to the first profile in rcs-config.json
-        else {
+        rcsObj["action"] = event;
+        if (rcsObj.action == 'acmactivate') {
+            // Verify we have a valid connection index and error out if we do not
+            if (!obj.connection[cindex]) { rcsObj = { errorText: "WebSocket connection not found in list of connected clients." }; return rcsObj; }
+            // Gets all of the certificate information needed by AMT
+            var dnsSuffix = null;
+            // Check the connection array if the dnsSuffix is set for this connection.
+            if (obj.connection[cindex].dnsSuffix) { dnsSuffix = obj.connection[cindex].dnsSuffix; }
+            rcsObj.certs = obj.getProvisioningCertObj(dnsSuffix, cindex);
+            // Check if we got an error while getting the provisioning cert object
+            if (rcsObj.certs.errorText) { return rcsObj.certs; }
+            var privateKey = rcsObj.certs.privateKey;
+            // Removes the private key information from the certificate object - don't send private key to the client!!
+            delete rcsObj.certs.privateKey;
+            rcsObj.certs = rcsObj.certs.certChain;
+            // Create a one time nonce that allows AMT to verify the digital signature of the management console performing the provisioning
+            rcsObj.nonce = generateNonce();
+            // Need to create a new array so we can concatinate both nonces (fwNonce first, Nonce second)
+            var arr = [fwNonce, rcsObj.nonce];
+            // mcNonce needs to be in base64 format to send over WebSocket connection
+            rcsObj.nonce = rcsObj.nonce.toString('base64');
+            // Then we need to sign the concatinated nonce with the private key of the provisioning certificate and encode as base64.
+            rcsObj.signature = signString(Buffer.concat(arr), privateKey);
+            if (rcsObj.signature.errorText) { return rcsObj.signature; }
+            // Grab the AMT password from the specified profile in rcsConfig file and add that to the rcsObj so we can set the new MEBx password
+            var amtPassword;
             var match = false;
             for (var x = 0; x < obj.rcsConfig.AMTConfigurations.length; x++) {
                 if (obj.rcsConfig.AMTConfigurations[x].ProfileName == obj.connection[cindex].profile) {
@@ -166,15 +175,34 @@ function CreateRcs(config, ws, logger, db) {
                 obj.output('Specified AMT profile name does not match list of available AMT profiles.');
                 return { errorText: "Specified AMT profile name does not match list of available AMT profiles." };
             }
+            var data = 'admin:' + obj.connection[cindex].digestRealm + ':' + amtPassword;
+            rcsObj.password = crypto.createHash('md5').update(data).digest('hex');
+            rcsObj.profileScript = null;
+            if (obj.rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== null && obj.rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== "") {
+                try { rcsObj.profileScript = fs.readFileSync(obj.rcsConfig.AMTConfigurations[cindex].ConfigurationScript, 'utf8'); }
+                catch (e) { rcsObj.profileScript = null; }
+            }
+            return rcsObj;
+        } else if (rcsObj.action == 'ccmactivate') {
+            var amtPassword;
+            var match = false;
+            for (var x = 0; x < obj.rcsConfig.AMTConfigurations.length; x++) {
+                if (obj.rcsConfig.AMTConfigurations[x].ProfileName == obj.connection[cindex].profile) {
+                    // Got a match, set AMT Profile Password in rcsObj
+                    amtPassword = obj.rcsConfig.AMTConfigurations[x].AMTPassword;
+                    match = true;
+                    break;
+                }
+            }
+            if (!match) {
+                // An AMT profile was specified but it doesn't match any of the profile names in rcs-config.json.  Send warning to console and default to first AMT profile listed.
+                obj.output('Specified AMT profile name does not match list of available AMT profiles.');
+                return { errorText: "Specified AMT profile name does not match list of available AMT profiles." };
+            }
+            var data = 'admin:' + obj.connection[cindex].digestRealm + ':' + amtPassword;
+            rcsObj.password = crypto.createHash('md5').update(data).digest('hex');
+            return rcsObj;
         }
-        var data = 'admin:' + obj.connection[cindex].digestRealm + ':' + amtPassword;
-        rcsObj.password = crypto.createHash('md5').update(data).digest('hex');
-        rcsObj.profileScript = null;
-        if (obj.rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== null && obj.rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== "") {
-            try { rcsObj.profileScript = fs.readFileSync(obj.rcsConfig.AMTConfigurations[cindex].ConfigurationScript, 'utf8'); }
-            catch (e) { rcsObj.profileScript = null; }
-        }
-        return rcsObj;
     }
 
     /**
