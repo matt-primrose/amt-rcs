@@ -91,6 +91,7 @@ function CreateRcs(config, ws, logger, db) {
                 if (message.nonce) { obj.connection[index]["fwNonce"] = Buffer.from(message.nonce, 'base64'); }
                 if (message.hashes) { obj.connection[index]["certHashes"] = message.hashes; }
                 if (message.uuid) { obj.connection[index]["amtGuid"] = message.uuid; }
+                if (message.tag) { obj.connection[index]["tag"] = message.tag; }
                 if (obj.db) { obj.db(obj.connection[index]); }
                 var rcsObj = obj.remoteConfiguration(obj.connection[index].fwNonce, index);
                 if (rcsObj.errorText) { obj.output(rcsObj.errorText); obj.sendMessage(index, rcsObj); }
