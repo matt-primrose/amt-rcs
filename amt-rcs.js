@@ -14,6 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+/**
+* @module amt-rcs
+*/
+
 /** 
 * @description Intel(r) AMT Remote Configuration Service
 * @author Matt Primrose
@@ -28,11 +32,14 @@ const crypto = require('crypto');
 const websocket = require('./wsserver');
 const RCSMessageProtocolVersion = 1; // RCS Message Protocol Version.
 /**
+
+ * @constructor
  * @description Creates and returns an instance of the RCS object
  * @param {JSON} config RCS configuration JSON object.
  * @param {Object} ws (Optional) WebSocket connection.
  * @param {Object} logger (Optional) Logging callback.
  * @param {Object} db (Optional) Database callback.
+ * @returns {Object} RCS service object
  */
 function CreateRcs(config, ws, logger, db) {
 
@@ -72,45 +79,22 @@ function CreateRcs(config, ws, logger, db) {
         if (obj.connection[index] == undefined) { obj.connection[index] = {}; }
         // Parse the incoming JSON message and figure out what type data message is coming in (string, buffer, or object)
         if (typeof message == 'string') {
-            try { message = JSON.parse(message); }
-            catch (e) { message = message; }
-            if (message.event) { event = message.event; }
-            if (message.data) {
-                try { message.data = JSON.parse(message.data); }
-                catch (e) { message.data = message.data; }
-            }
-            if (message.data.type && message.data.type == 'Buffer') { message.data = Buffer.from(message.data); }
+            try { message = JSON.parse(message); } catch (e) { var msg = { "errorText": "Invalid message from client" }; obj.output(msg.errorText); obj.sendMessage(index, msg);}
+            if (message.action) { event = message.action; }
         }
         switch (event) {
             // Handles 'cmd' messages
-            case 'cmd':
-                if (message.data.profile) {
-                    obj.connection[index]["profile"] = message.data.profile;
-                }
-                if (message.data.dnsSuffix) {
-                    obj.connection[index]["dnsSuffix"] = message.data.dnsSuffix;
-                }
-                if (message.data.digestRealm) {
-                    obj.connection[index]["digestRealm"] = message.data.digestRealm;
-                }
-                if (message.data.fwNonce) {
-                    obj.connection[index]["fwNonce"] = Buffer.from(message.data.fwNonce, 'base64');
-                }
-                if (message.data.certHashes) {
-                    obj.connection[index]["certHashes"] = message.data.certHashes;
-                }
-                if (message.data.amtGuid) {
-                    obj.connection[index]["amtGuid"] = message.data.amtGuid;
-                }
-                if (message.data.ip) {
-                    obj.connection[index]["ip"] = message.data.ip;
-                }
-                if (message.data == 'acm' || message.data.cmd == 'acm') {
-                    var rcsObj = obj.remoteConfiguration(obj.connection[index].fwNonce, index);
-                    if (rcsObj.error) { obj.output(rcsObj.error); sendMessage(index, "error", "error", rcsObj.error); }
-                    obj.sendMessage(index, "ok", "message", rcsObj);
-                }
+            case 'acmactivate':
+                if (message.profile) { obj.connection[index]["profile"] = message.profile; }
+                if (message.fqdn) { obj.connection[index]["dnsSuffix"] = message.fqdn; }
+                if (message.realm) { obj.connection[index]["digestRealm"] = message.realm; }
+                if (message.nonce) { obj.connection[index]["fwNonce"] = Buffer.from(message.nonce, 'base64'); }
+                if (message.hashes) { obj.connection[index]["certHashes"] = message.hashes; }
+                if (message.uuid) { obj.connection[index]["amtGuid"] = message.uuid; }
                 if (obj.db) { obj.db(obj.connection[index]); }
+                var rcsObj = obj.remoteConfiguration(obj.connection[index].fwNonce, index);
+                if (rcsObj.errorText) { obj.output(rcsObj.errorText); sendMessage(index, rcsObj); }
+                obj.sendMessage(index, rcsObj);
                 break;
             // Handles 'error' type messages
             case 'error':
@@ -140,27 +124,28 @@ function CreateRcs(config, ws, logger, db) {
      */
     obj.remoteConfiguration = function(fwNonce, cindex) {
         var rcsObj = {};
+        rcsObj["action"] = 'acmactivate';
         // Verify we have a valid connection index and error out if we do not
-        if (!obj.connection[cindex]) { rcsObj = { error: "WebSocket connection not found in list of connected clients." }; return rcsObj; }
+        if (!obj.connection[cindex]) { rcsObj = { errorText: "WebSocket connection not found in list of connected clients." }; return rcsObj; }
         // Gets all of the certificate information needed by AMT
         var dnsSuffix = null;
         // Check the connection array if the dnsSuffix is set for this connection.
         if (obj.connection[cindex].dnsSuffix) { dnsSuffix = obj.connection[cindex].dnsSuffix; }
-        rcsObj.provCertObj = obj.getProvisioningCertObj(dnsSuffix, cindex);
+        rcsObj.certs = obj.getProvisioningCertObj(dnsSuffix, cindex);
         // Check if we got an error while getting the provisioning cert object
-        if (rcsObj.provCertObj.error) { return rcsObj.provCertObj; }
-        var privateKey = rcsObj.provCertObj.privateKey;
+        if (rcsObj.certs.errorText) { return rcsObj.certs; }
+        var privateKey = rcsObj.certs.privateKey;
         // Removes the private key information from the certificate object - don't send private key to the client!!
-        delete rcsObj.provCertObj.privateKey;
+        delete rcsObj.certs.privateKey;
         // Create a one time nonce that allows AMT to verify the digital signature of the management console performing the provisioning
-        rcsObj.mcNonce = generateMcnonce();
-        // Need to create a new array so we can concatinate both nonces (fwNonce first, McNonce second)
-        var arr = [fwNonce, rcsObj.mcNonce];
+        rcsObj.nonce = generateNonce();
+        // Need to create a new array so we can concatinate both nonces (fwNonce first, Nonce second)
+        var arr = [fwNonce, rcsObj.nonce];
         // mcNonce needs to be in base64 format to send over WebSocket connection
-        rcsObj.mcNonce = rcsObj.mcNonce.toString('base64');
+        rcsObj.nonce = rcsObj.nonce.toString('base64');
         // Then we need to sign the concatinated nonce with the private key of the provisioning certificate and encode as base64.
-        rcsObj.digitalSignature = signString(Buffer.concat(arr), privateKey);
-        if (rcsObj.digitalSignature.error) { return rcsObj.digitalSignature; }
+        rcsObj.signature = signString(Buffer.concat(arr), privateKey);
+        if (rcsObj.signature.errorText) { return rcsObj.signature; }
         // Grab the AMT password from the specified profile in rcsConfig file and add that to the rcsObj so we can set the new MEBx password
         var amtPassword
         if (!obj.connection[cindex].profile || obj.connection[cindex].profile == "" || obj.connection[cindex].profile == null) { amtPassword = obj.rcsConfig.AMTConfigurations[0].AMTPassword; }  // If profile is not specified, set the profile to the first profile in rcs-config.json
@@ -177,11 +162,11 @@ function CreateRcs(config, ws, logger, db) {
             if (!match) {
                 // An AMT profile was specified but it doesn't match any of the profile names in rcs-config.json.  Send warning to console and default to first AMT profile listed.
                 obj.output('Specified AMT profile name does not match list of available AMT profiles.');
-                return { error: "Specified AMT profile name does not match list of available AMT profiles." };
+                return { errorText: "Specified AMT profile name does not match list of available AMT profiles." };
             }
         }
         var data = 'admin:' + obj.connection[cindex].digestRealm + ':' + amtPassword;
-        rcsObj.passwordHash = crypto.createHash('md5').update(data).digest('hex');
+        rcsObj.password = crypto.createHash('md5').update(data).digest('hex');
         rcsObj.profileScript = null;
         if (obj.rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== null && obj.rcsConfig.AMTConfigurations[cindex].ConfigurationScript !== "") {
             try { rcsObj.profileScript = fs.readFileSync(obj.rcsConfig.AMTConfigurations[cindex].ConfigurationScript, 'utf8'); }
@@ -199,7 +184,7 @@ function CreateRcs(config, ws, logger, db) {
         var cert, certpass;
         if (domain == null || domain == '') {
             // If no domain is specified, return error.
-            return { error: "AMT domain suffix not specified." };
+            return { errorText: "AMT domain suffix not specified." };
         } else {
             var match = false;
             for (var x = 0; x < obj.rcsConfig.AMTDomains.length; x++) {
@@ -214,7 +199,7 @@ function CreateRcs(config, ws, logger, db) {
             if (!match) {
                 // An AMT domain suffix was specified but it doesn't match any of the domain suffix specified in rcs-config.json.
                 obj.output('Specified AMT domain suffix does not match list of available AMT domain suffixes.');
-                return { error: "Specified AMT domain suffix does not match list of available AMT domain suffixes." };
+                return { errorText: "Specified AMT domain suffix does not match list of available AMT domain suffixes." };
             }
         }
         // Verify that the certificate path points to a file that exists
@@ -225,11 +210,11 @@ function CreateRcs(config, ws, logger, db) {
             }
         } catch (e) { }
         if (certFound == false) {
-            return { error: "AMT Provisioning Certificate not found on server" };
+            return { errorText: "AMT Provisioning Certificate not found on server" };
         }
         // convert the certificate pfx to an object
         var pfxobj = convertPfxToObject(cert, certpass);
-        if (pfxobj.error) { return pfxobj; }
+        if (pfxobj.errorText) { return pfxobj; }
         // return the certificate chain pems and private key
         return obj.dumpPfx(pfxobj, index);
     }
@@ -308,7 +293,7 @@ function CreateRcs(config, ws, logger, db) {
                     return provisioningCertificateObj;
                 }
             }
-            return { error: "Provisioning Certificate doesn't match any trusted certificates from AMT" };
+            return { errorText: "Provisioning Certificate doesn't match any trusted certificates from AMT" };
         }
     }
     
@@ -320,11 +305,12 @@ function CreateRcs(config, ws, logger, db) {
     * @param {string} event Event type { cmd, message, error, close, finish }
     * @param {string|buffer|object} message Message blob going to device
     */
-    obj.sendMessage = function(index, status, event, message) {
+    obj.sendMessage = function(index, message) {
         if (obj.wsServer == null) { obj.output('WebSocket Server not initialized.'); }
         if (status == null) { status = 'ok'; }
-        var msg = { "version": RCSMessageProtocolVersion, "status": status, "event": event, "data": message };
-        obj.wsServer.sendMessage(index, msg);
+        message.version = RCSMessageProtocolVersion;
+        message.status = status;
+        obj.wsServer.sendMessage(index, message);
     }
 
     return obj;
@@ -347,7 +333,7 @@ function convertPfxToObject(pfxpath, passphrase) {
     try {
         pfx = forge.pkcs12.pkcs12FromAsn1(asn, true, passphrase);
     } catch (e) {
-        return { error: "Decrypting provisining certificate failed." };
+        return { errorText: "Decrypting provisining certificate failed." };
     }
     // Get the certs from certbags
     var bags = pfx.getBags({ bagType: forge.pki.oids.certBag });
@@ -380,7 +366,7 @@ function signString(message, key) {
         var sign = signer.sign(forge.pki.privateKeyToPem(key), 'base64');
         return sign;
     } catch (e) {
-        return { error: "Unable to create Digital Signature" };
+        return { errorText: "Unable to create Digital Signature" };
     }
 
 }
@@ -404,7 +390,7 @@ function verifyString(message, cert, sign) {
 * @description Generates the console nonce used validate the console.  AMT only accepts a nonce that is 20 bytes long of random data
 * @returns {buffer} Returns console nonce used to verify RCS server to AMT
 */
-function generateMcnonce() { var mcNonce = Buffer.from(crypto.randomBytes(20), 0, 20); return mcNonce; }
+function generateNonce() { var nonce = Buffer.from(crypto.randomBytes(20), 0, 20); return nonce; }
 
 /**
  * @description Sorts the intermediate certificates to properly order the certificate chain

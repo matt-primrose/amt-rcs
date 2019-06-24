@@ -33,6 +33,9 @@
     </Compile>
     <Compile Include="wsserver.js" />
     <Compile Include="amt-rcs.js" />
+    <Content Include="docconfig.json">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="package.json" />
     <Content Include="rcs-config.json">
       <SubType>Code</SubType>
