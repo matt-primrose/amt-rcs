@@ -93,7 +93,7 @@ function CreateRcs(config, ws, logger, db) {
                 if (message.uuid) { obj.connection[index]["amtGuid"] = message.uuid; }
                 if (obj.db) { obj.db(obj.connection[index]); }
                 var rcsObj = obj.remoteConfiguration(obj.connection[index].fwNonce, index);
-                if (rcsObj.errorText) { obj.output(rcsObj.errorText); sendMessage(index, rcsObj); }
+                if (rcsObj.errorText) { obj.output(rcsObj.errorText); obj.sendMessage(index, rcsObj); }
                 obj.sendMessage(index, rcsObj);
                 break;
             // Handles 'error' type messages
@@ -137,6 +137,7 @@ function CreateRcs(config, ws, logger, db) {
         var privateKey = rcsObj.certs.privateKey;
         // Removes the private key information from the certificate object - don't send private key to the client!!
         delete rcsObj.certs.privateKey;
+        rcsObj.certs = rcsObj.certs.certChain;
         // Create a one time nonce that allows AMT to verify the digital signature of the management console performing the provisioning
         rcsObj.nonce = generateNonce();
         // Need to create a new array so we can concatinate both nonces (fwNonce first, Nonce second)
@@ -254,7 +255,7 @@ function CreateRcs(config, ws, logger, db) {
                         var der = forge.asn1.toDer(forge.pki.certificateToAsn1(cert)).getBytes();
                         var md = forge.md.sha256.create();
                         md.update(der);
-                        fingerprint = md.digest().toHex().toUpperCase();
+                        fingerprint = md.digest().toHex();
                     }
                     else {
                         interObj.push({ 'pem': pem, 'subject': cert.subject.hash, 'issuer': cert.issuer.hash });
@@ -289,7 +290,7 @@ function CreateRcs(config, ws, logger, db) {
             }
             // Check that provisioning certificate root matches one of the trusted roots from AMT
             for (var x = 0; x < obj.connection[index].certHashes.length; x++) {
-                if (obj.connection[index].certHashes[x].certificateHash == fingerprint) {
+                if (obj.connection[index].certHashes[x] == fingerprint) {
                     return provisioningCertificateObj;
                 }
             }
@@ -307,9 +308,8 @@ function CreateRcs(config, ws, logger, db) {
     */
     obj.sendMessage = function(index, message) {
         if (obj.wsServer == null) { obj.output('WebSocket Server not initialized.'); }
-        if (status == null) { status = 'ok'; }
+        if (message.status == null) { message.status = 'ok'; }
         message.version = RCSMessageProtocolVersion;
-        message.status = status;
         obj.wsServer.sendMessage(index, message);
     }
 
