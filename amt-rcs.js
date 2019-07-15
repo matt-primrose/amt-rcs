@@ -129,35 +129,35 @@ function CreateRcs(config, ws, logger, db) {
                     obj.sendMessage(tunnel, rcsObj)
                 }
                 let acm = {'version': RCSMessageProtocolVersion, 'status': 'ok', 'certs': rcsObj.certs, 'action': rcsObj.action, 'nonce': rcsObj.nonce, 'signature': rcsObj.signature, 'profileScript': rcsObj.profileScript, 'password': rcsObj.passwordHash};
-                if (obj.db !== null) { obj.db(rcsObj); }
-                if (obj.logger !== null) { obj.logger(rcsObj); }
+                if (obj.db) { obj.db(rcsObj); }
+                if (obj.logger) { obj.logger(rcsObj); }
                 obj.sendMessage(tunnel, acm);
                 break;
             // Handles 'ccmactivate' messages
             case 'ccmactivate':
-                let rcsObj = obj.remoteConfiguration(null, tunnel, event);
+                rcsObj = obj.remoteConfiguration(null, tunnel, event);
                 if (rcsObj.errorText) { 
                     obj.output(rcsObj.errorText); 
                     obj.sendMessage(tunnel, rcsObj);
                 }
                 let ccm = {'version': RCSMessageProtocolVersion, 'status': 'ok', 'certs': rcsObj.certs, 'action': rcsObj.action, 'nonce': rcsObj.nonce, 'signature': rcsObj.signature, 'profileScript': rcsObj.profileScript, 'password': rcsObj.passwordHash}
-                if (obj.db !== null) { obj.db(rcsObj); }
-                if (obj.logger !== null) { obj.logger(rcsObj); }
+                if (obj.db) { obj.db(rcsObj); }
+                if (obj.logger) { obj.logger(rcsObj); }
                 obj.sendMessage(tunnel, ccm);
                 break;
             // Handles 'error' type messages
             case 'error':
-                obj.output('AMT Device ' + client.uuid + ' received "error" message: ' + message.data);
+                obj.output('AMT Device ' + message.uuid + ' received "error" message: ' + message.data);
                 break;
             // Handles 'close' type messages when the socket closes
             case 'close':
                 obj.output(message.data);
-                delete obj.connection[client.uuid];
+                delete obj.connection[message.uuid];
                 break;
             // Handles 'finish' type messages to indicate when the configuration process has completed (success or failure)
             case 'acmactivate-success':
             case 'ccmactivate-success':
-                obj.output('AMT Configuration of device ' + client.uuid + ' ' + message.data);
+                obj.output('AMT Configuration of device ' + message.uuid + ' success');
                 break;
             // Catches anything that falls through the cracks.  Shouldn't ever see this message
             default:
