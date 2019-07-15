@@ -23,12 +23,12 @@ limitations under the License.
 
 'use strict'
 const fs = require('fs');
-var rcs = require('./amt-rcs');
-var config = './rcs-config.json';
+let rcs = require('./amt-rcs');
+let config = './rcs-config.json';
 function startrcs() {
     fs.readFile(config, 'utf8', function (err, file) {
         if (err) { console.log(err); process.exit(1); }
-        var RS = rcs(JSON.parse(file.trim()));
+        let RS = rcs(JSON.parse(file.trim()));
         RS.start();
     });
 }

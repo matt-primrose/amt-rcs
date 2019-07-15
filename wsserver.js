@@ -25,7 +25,6 @@ limitations under the License.
 */
 
 "use strict";
-const http = require('https');
 const WebSocket = require('ws');
 const fs = require('fs');
 
@@ -40,19 +39,19 @@ const fs = require('fs');
  * @returns {object} Returns the websocket server object to the calling library
  */
 function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {   
-    var obj = new Object();
+    let obj = new Object();
     obj.port = port;
     obj.clients = [];
     obj.tls = tls;
     if (obj.tls == true) {
         try {
-            var privateKey = fs.readFileSync(wsscertkey, 'utf8');
-            var certificate = fs.readFileSync(wsscert, 'utf8');
+            let privateKey = fs.readFileSync(wsscertkey, 'utf8');
+            let certificate = fs.readFileSync(wsscert, 'utf8');
         } catch (e) {
             console.log('TLS certificate not found.');
             process.exit(1);
         }
-        var credentials = { key: privateKey, cert: certificate };
+        let credentials = { key: privateKey, cert: certificate };
         obj.httpsServer = https.createServer(credentials);
         httpsServer.listen(obj.port);
         obj.wsServer = new WebSocket.Server({
@@ -67,7 +66,7 @@ function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {
     */
     obj.wsServer.on('connection', (connection) => {
         // we need to know client index to remove them on 'close' event
-        var index = obj.clients.push(connection) - 1;
+        //let index = obj.clients.push(connection) - 1;
         console.log((new Date()) + ' Connection accepted.');
         /**
         * message received
@@ -77,7 +76,7 @@ function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {
         * @property {string} message - fired when a message is received from client
         */
         connection.on('message', function (message) {
-            obj.eventHandler('message', message, index);
+            obj.eventHandler('message', message, connection);
         });
         /**
         * error received
@@ -86,7 +85,7 @@ function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {
         * @type {object}
         * @property {string} error - fired when a websocket error is received
         */
-        connection.on('error', function (event) { obj.eventHandler('error', event, index); });
+        connection.on('error', function (event) { obj.eventHandler('error', event, connection); });
         /**
         * client disconnected
         *
@@ -95,9 +94,9 @@ function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {
         * @property {string} close - fired when the websocket closes
         */
         connection.on('close', function (connection) {
-            obj.eventHandler('close', { "status": "ok", "event": "close", "data": "AMT Device " + index + " disconnected." }, index);
+            obj.eventHandler('close', { "status": "ok", "event": "close", "data": "AMT Device disconnected." }, connection);
             // remove client from the list of connected clients
-            obj.clients.splice(index, 1);
+            //obj.clients.splice(index, 1);
         });
     });
     /**
@@ -106,7 +105,7 @@ function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {
     * @param {Number} index Index of the connected client
     * @param {JSON} message Message in JSON format to be sent to client
     */
-    obj.sendMessage = function (index, message) { obj.clients[index].send(JSON.stringify(message)); };
+    obj.sendMessage = function (connection, message) { connection.send(JSON.stringify(message)); };
     /**
     * @external eventHandler
     * @description forwards a message from the connected client to the backend service
@@ -114,7 +113,7 @@ function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {
     * @param {String} message Message to be forwarded to backend service
     * @param {Number} index The index reference of the connected client
     */
-    obj.eventHandler = function (type, message, index) { connectionHandler(type, message, index); };
+    obj.eventHandler = function (type, message, connection) { connectionHandler(type, message, connection); };
     return obj;
 }
 module.exports = WebSocketServer;
