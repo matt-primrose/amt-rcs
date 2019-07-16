@@ -10,17 +10,17 @@
   "AMTConfigurations": [
     {
       "ProfileName": "profile1",
-      "AMTPassword": "P@ssw0rd",
-      "GenerateRandomPassword": false,
+      "AMTPassword": "<StrongPassword>",
+      "GenerateRandomPassword": true,
       "RandomPasswordLength": 8,
       "RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()",
-      "Activation": "acmactivate",
+      "Activation": "ccmactivate",
       "ConfigurationScript": null
     },
     {
       "ProfileName": "profile2",
-      "AMTPassword": "P@ssw0rd",
-      "GenerateRandomPassword": true,
+      "AMTPassword": "<StrongPassword>",
+      "GenerateRandomPassword": false,
       "RandomPasswordLength": 8,
       "RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()",
       "Activation": "acmactivate",
@@ -36,9 +36,9 @@
     },
     {
       "Name": "domain2",
-      "DomainSuffix": "vprodemo.com",
-      "ProvisioningCert": "vprodemo.pfx",
-      "ProvisioningCertPassword": "P@ssw0rd"
+      "DomainSuffix": "d2.com",
+      "ProvisioningCert": "d2.pfx",
+      "ProvisioningCertPassword": "password"
     }
   ]
 }

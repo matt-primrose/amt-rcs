@@ -6,12 +6,11 @@
   "author": {
     "name": "mprimros"
   },
-  "dependencies": {
-    "node-forge": "^0.8.4",
-    "ws": "^7.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "jest": "^24.8.0"
+    "jest": "^24.8.0",
+    "node-forge": "^0.8.5",
+    "ws": "^7.1.0"
   },
   "scripts": {
     "test": "jest"
