@@ -27,14 +27,22 @@ Modify the rcs-config.json file to specify the location of the provisioning cert
   },
   "AMTConfigurations": [
     {
-      "ProfileName": "default",
-      "AMTPassword": "password",
-      "ConfigurationScript": ""
+      "ProfileName": "profile1",
+      "AMTPassword": "<StrongPassword>",
+      "GenerateRandomPassword": true,
+      "RandomPasswordLength": 8,
+      "RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()",
+      "Activation": "ccmactivate",
+      "ConfigurationScript": null
     },
     {
-      "ProfileName": "config2",
-      "AMTPassword": "password",
-      "ConfigurationScript": ""
+      "ProfileName": "profile2",
+      "AMTPassword": "<StrongPassword>",
+      "GenerateRandomPassword": false,
+      "RandomPasswordLength": 8,
+      "RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()",
+      "Activation": "acmactivate",
+      "ConfigurationScript": null
     }
   ],
   "AMTDomains": [
@@ -46,7 +54,7 @@ Modify the rcs-config.json file to specify the location of the provisioning cert
     },
     {
       "Name": "domain2",
-      "DomainSuffix": "somethingelse.com",
+      "DomainSuffix": "d2.com",
       "ProvisioningCert": "d2.pfx",
       "ProvisioningCertPassword": "password"
     }
