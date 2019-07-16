@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 const fs = require('fs');
+const forge = require('node-forge');
 
 let cryptoHelpers = new Object();
     /**
@@ -45,7 +46,7 @@ let cryptoHelpers = new Object();
     * @param {object} pfxobj Certificate object from convertPfxToObject function
     * @returns {object} Returns provisioning certificiate object with certificate chain in proper order
     */
-   cryptoHelpers.dumpPfx = function(pfxobj, uuid) {
+   cryptoHelpers.dumpPfx = function(pfxobj) {
         let provisioningCertificateObj = new Object();
         let interObj = new Array();
         let leaf = new Object();
@@ -102,6 +103,7 @@ let cryptoHelpers = new Object();
             }
             // Root PEM goes in last
             provisioningCertificateObj.certChain.push(root.pem);
+            provisioningCertificateObj.rootFingerprint = new Object(root.fingerprint);
             if (pfxobj.keys && Array.isArray(pfxobj.keys)) {
                 for (let i = 0; i < pfxobj.keys.length; i++) {
                     let key = pfxobj.keys[i];
@@ -109,7 +111,6 @@ let cryptoHelpers = new Object();
                     provisioningCertificateObj.privateKey = key;
                 }
             }
-
         }
         return provisioningCertificateObj;
     };
@@ -241,7 +242,7 @@ let cryptoHelpers = new Object();
      * @returns {string} Returns random password string
      */
     cryptoHelpers.generateRandomPassword = function(validChars, length){
-        let password;
+        let password = '';
         for (let x = 0; x < length; x++){
             password = password + validChars.charAt(Math.floor(Math.random() * validChars.length));
         }

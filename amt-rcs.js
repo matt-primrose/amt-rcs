@@ -191,8 +191,8 @@ function CreateRcs(config, ws, logger, db) {
             else { return { errorText: "AMT domain suffix not specified."}; }
             let match = false;
             let cert, certpass;
-            for (let x = 0; x < rcsConfig.AMTDomains.length; x++) {
-                if (rcsConfig.AMTDomains[x].DomainSuffix == domain) {
+            for (let x = 0; x < obj.rcsConfig.AMTDomains.length; x++) {
+                if (obj.rcsConfig.AMTDomains[x].DomainSuffix == dnsSuffix) {
                     // Got a match, set AMT Provisioning certificate and key
                     cert = obj.rcsConfig.AMTDomains[x].ProvisioningCert;
                     certpass = obj.rcsConfig.AMTDomains[x].ProvisioningCertPassword;
@@ -202,7 +202,6 @@ function CreateRcs(config, ws, logger, db) {
             }
             if (!match) {
                 // An AMT domain suffix was specified but it doesn't match any of the domain suffix specified in rcs-config.json.
-                obj.output('Specified AMT domain suffix does not match list of available AMT domain suffixes.');
                 return { errorText: "Specified AMT domain suffix does not match list of available AMT domain suffixes." };
             }
             let pfxobj = helpers.getProvisioningCertObj(cert, certpass);
@@ -213,7 +212,8 @@ function CreateRcs(config, ws, logger, db) {
 
             // Check that provisioning certificate root matches one of the trusted roots from AMT
             let hashMatch = false;
-            for (let x = 0; x < obj.connection[uuid].certHashes.length; x++) { if (obj.connection[uuid].certHashes[x] == certObj.certChain[certObj.certChain.length - 1].fingerprint) { hashMatch = true; } }
+            for (let x = 0; x < obj.connection[uuid].certHashes.length; x++) { 
+                if (obj.connection[uuid].certHashes[x] == certObj.rootFingerprint) { hashMatch = true; } }
             if (hashMatch == false){ return { errorText: "Provisioning Certificate doesn't match any trusted certificates from AMT" }; }
             
             // Don't send private key to the client!!
@@ -230,9 +230,13 @@ function CreateRcs(config, ws, logger, db) {
             if (rcsObj.signature.errorText) { return rcsObj.signature; }
             // Grab the AMT password from the specified profile in rcsConfig file and add that to the rcsObj so we can set the new MEBx password
             rcsObj.profileScript = null;
-            if (obj.rcsConfig.AMTConfigurations[uuid].ConfigurationScript !== null && obj.rcsConfig.AMTConfigurations[uuid].ConfigurationScript !== "") {
-                try { rcsObj.profileScript = fs.readFileSync(obj.rcsConfig.AMTConfigurations[uuid].ConfigurationScript, 'utf8'); }
-                catch (e) { rcsObj.profileScript = null; }
+            for (let x = 0; x < obj.rcsConfig.AMTConfigurations.length; x++){
+                if (obj.rcsConfig.AMTConfigurations[x].ProfileName === obj.connection[uuid].profile) {
+                    if (obj.rcsConfig.AMTConfigurations[x].ConfigurationScript !== null && obj.rcsConfig.AMTConfigurations[x].ConfigurationScript !== ""){
+                        try { rcsObj.profileScript = fs.readFileSync(obj.rcsConfig.AMTConfigurations[x].ConfigurationScript, 'utf8'); }
+                        catch (e) { rcsObj.profileScript = null; }
+                    }
+                }
             }
         }
         let amtPassword;
@@ -243,7 +247,7 @@ function CreateRcs(config, ws, logger, db) {
                 if(obj.rcsConfig.AMTConfigurations[x].GenerateRandomPassword === true){
                     amtPassword = helpers.generateRandomPassword(obj.rcsConfig.AMTConfigurations[x].RandomPasswordCharacters, obj.rcsConfig.AMTConfigurations[x].RandomPasswordLength);
                     obj.output("Create random password for device " + uuid + ".");
-                    if (obj.db === null && obj.logger === null){
+                    if (obj.db == null && obj.logger == null){
                         // DB or Logger link not mapped and randomized password will be lost after device disconnects.  Output password to console window as a last ditch attempt to save password
                         obj.output('Random password not saved anywhere!! Device with AMT GUID: ' + obj.connection[uuid].amtGuid + ' has password: ' + amtPassword);
                     }
