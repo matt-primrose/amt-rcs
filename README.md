@@ -4,6 +4,7 @@ Built to work with MeshCMD which you can get here: https://www.meshcommander.com
 
 ### New Features
 - Version 0.2.0 makes this into a module library for improved integration into your existing solutions
+- Added Jest test support
 - Support for custom websocket server, database, logging integration added in 0.2.0.
 - Support for setting up tls for secure websocket communication (for the included wsserver)
 - Supports multiple AMT profiles.  Passes designated script file to MeshCMD or receiving client application/agent

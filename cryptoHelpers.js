@@ -241,11 +241,39 @@ let cryptoHelpers = new Object();
      * @param {number} length Length of desired password 
      * @returns {string} Returns random password string
      */
-    cryptoHelpers.generateRandomPassword = function(validChars, length){
+    cryptoHelpers.generateRandomPassword = function(validChars, length, callback){
         let password = '';
+        if ((validChars == null) || (validChars == '')) { 
+            callback({'errorText': 'Not enough valid characters to create random password.'}); 
+        }
+        if ((length < 8) || (length > 32)){
+            callback({'errorText': 'Invalid password length specified.'});
+        }
         for (let x = 0; x < length; x++){
             password = password + validChars.charAt(Math.floor(Math.random() * validChars.length));
         }
         return password;
     };
+        /**
+     * @description Checks the AMT passwords in the rcsConfig and rejects any configurations that don't meet AMT password standards
+     * @param {array} list List of AMT configurations
+     */
+    cryptoHelpers.validateAMTPasswords = function(list, callback){
+        for(let x = 0; x < list.length; x++){
+            if (list[x].GenerateRandomPassword === false){
+                if(!cryptoHelpers.passwordCheck(list[x].AMTPassword)){
+                    callback({'errorText': "Detected bad AMT password for profile: " + list[x].ProfileName + "./n/rRemoving " + list[x].ProfileName + " profile from list of available AMT profiles."});
+                    list.splice(x, 1);
+                    cryptoHelpers.validateAMTPasswords(list);
+                }
+            } else {
+                if((list[x].RandomPasswordLength > 32) || (list[x].RandomPasswordLength < 8)){
+                    callback({'errorText': "Detected bad AMT password length for profile: " + list[x].ProfileName + "./n/rRemoving " + list[x].ProfileName + " profile from list of available AMT profiles."});
+                    list.splice(x, 1);
+                    cryptoHelpers.validateAMTPasswords(list);
+                }
+            }
+        }
+        return list;
+    }
 module.exports = cryptoHelpers;

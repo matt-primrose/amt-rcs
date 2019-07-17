@@ -13,7 +13,7 @@
       "AMTPassword": "<StrongPassword>",
       "GenerateRandomPassword": true,
       "RandomPasswordLength": 8,
-      "RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()",
+      "RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890~`!@#$%^&*()_-+=|}]{[;:?.>,<",
       "Activation": "ccmactivate",
       "ConfigurationScript": null
     },
@@ -22,7 +22,7 @@
       "AMTPassword": "<StrongPassword>",
       "GenerateRandomPassword": false,
       "RandomPasswordLength": 8,
-      "RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890!@#$%^&*()",
+      "RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890~`!@#$%^&*()_-+=|}]{[;:?.>,<",
       "Activation": "acmactivate",
       "ConfigurationScript": null
     }

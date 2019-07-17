@@ -49,30 +49,15 @@ function CreateRcs(config, ws, logger, db) {
     obj.logger = logger;
     obj.db = db;
     obj.connection = {};
+    obj.rcsConfig.AMTConfigurations = helpers.validateAMTPasswords(obj.rcsConfig.AMTConfigurations, function(message){
+        obj.output(message);
+    });
     obj.output = function (msg) { console.log((new Date()) + ' ' + msg); if (obj.logger !== undefined) { obj.logger(msg); } }
 
     /**
      * @description Main function to start the RCS service
      */
     obj.start = function() { obj.startWebSocketServer(); }
-
-    /**
-     * @description Checks the AMT passwords in the rcsConfig and rejects any configurations that don't meet AMT password standards
-     * @param {array} list List of AMT configurations
-     */
-    obj.validateAMTPasswords = function(list){
-        for(let x=0; x<list.length; x++){
-            if (list[x].GenerateRandomPassword === false){
-                if(!helpers.passwordCheck(list[x].AMTPassword)){
-                    obj.output("Detected bad AMT password for profile: " + list[x].ProfileName + ".");
-                    obj.output("Removing " + list[x].ProfileName + " profile from list of available AMT profiles.");
-                    list.splice(x, 1);
-                    obj.validateAMTPasswords(list);
-                }
-            }
-        }
-        obj.rcsConfig.AMTConfigurations = list;
-    }
 
     /**
     * @description Start the WebSocket Server
