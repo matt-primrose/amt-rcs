@@ -49,10 +49,11 @@ function CreateRcs(config, ws, logger, db) {
     obj.logger = logger;
     obj.db = db;
     obj.connection = {};
+    obj.output = function (msg) { console.log((new Date()) + ' ' + msg); if (obj.logger !== undefined) { obj.logger(msg); } }
     obj.rcsConfig.AMTConfigurations = helpers.validateAMTPasswords(obj.rcsConfig.AMTConfigurations, function(message){
         obj.output(message);
     });
-    obj.output = function (msg) { console.log((new Date()) + ' ' + msg); if (obj.logger !== undefined) { obj.logger(msg); } }
+    
 
     /**
      * @description Main function to start the RCS service
@@ -90,25 +91,28 @@ function CreateRcs(config, ws, logger, db) {
             if (message.action) { event = message.action; }
         }
         let client = {};
-        if (message.client) { client.client = message.client; }
-        if (message.action) { client.action = message.action; }
-        if (message.profile) { client.profile = message.profile; }
-        if (message.fqdn) { client.dnsSuffix = message.fqdn; }
-        if (message.realm) { client.digestRealm = message.realm; }
-        if (message.nonce) { client.fwNonce = Buffer.from(message.nonce, 'base64'); }
-        if (message.hashes) { client.certHashes = message.hashes; }
-        if (message.uuid) { client.amtGuid = message.uuid; }
-        if (message.ver) { client.amtVer = message.ver; }
-        if (message.modes) { client.provisionModes = message.modes; }
-        if (message.currentMode) { client.currentMode = message.currentMode; }
-        if (message.tag) { client.tag = message.tag; }
-        if (tunnel) { client.tunnel = tunnel; }
-        if (obj.connection[client.uuid] === undefined) { obj.connection[client.uuid] = client; }
-        if (obj.db) { obj.db(client); }
+        let rcsObj = {};
+        if ((event !== 'close') && (event !== 'error') && (event !== 'message')){
+            if (message.client) { client.client = message.client; }
+            if (message.action) { client.action = message.action; }
+            if (message.profile) { client.profile = message.profile; }
+            if (message.fqdn) { client.dnsSuffix = message.fqdn; }
+            if (message.realm) { client.digestRealm = message.realm; }
+            if (message.nonce) { client.fwNonce = Buffer.from(message.nonce, 'base64'); }
+            if (message.hashes) { client.certHashes = message.hashes; }
+            if (message.uuid) { client.amtGuid = message.uuid; }
+            if (message.ver) { client.amtVer = message.ver; }
+            if (message.modes) { client.provisionModes = message.modes; }
+            if (message.currentMode) { client.currentMode = message.currentMode; }
+            if (message.tag) { client.tag = message.tag; }
+            if (tunnel) { client.tunnel = tunnel; }
+            if (obj.connection[client.uuid] === undefined) { obj.connection[client.uuid] = client; }
+            if (obj.db) { obj.db(client); }
+        }
         switch (event) {
             // Handles 'acmactivate' messages
             case 'acmactivate':
-                let rcsObj = obj.remoteConfiguration(client.fwNonce, client.uuid, event);
+                rcsObj = obj.remoteConfiguration(client.fwNonce, client.uuid, event);
                 if (rcsObj.errorText) { 
                     obj.output(rcsObj.errorText); 
                     obj.sendMessage(tunnel, rcsObj)
@@ -120,7 +124,7 @@ function CreateRcs(config, ws, logger, db) {
                 break;
             // Handles 'ccmactivate' messages
             case 'ccmactivate':
-                rcsObj = obj.remoteConfiguration(null, tunnel, event);
+                rcsObj = obj.remoteConfiguration((client.fwNonce ? client.fwNonce : null), client.uuid, event);
                 if (rcsObj.errorText) { 
                     obj.output(rcsObj.errorText); 
                     obj.sendMessage(tunnel, rcsObj);
@@ -131,18 +135,21 @@ function CreateRcs(config, ws, logger, db) {
                 obj.sendMessage(tunnel, ccm);
                 break;
             // Handles 'error' type messages
-            case 'error':
-                obj.output('AMT Device ' + message.uuid + ' received "error" message: ' + message.data);
+            case 'error':                
+                obj.output('AMT Device received "error" message: ' + message.data);
                 break;
             // Handles 'close' type messages when the socket closes
             case 'close':
                 obj.output(message.data);
                 delete obj.connection[message.uuid];
                 break;
-            // Handles 'finish' type messages to indicate when the configuration process has completed (success or failure)
+            // Handles 'acmactivate-success' and 'ccmactivate-success' messages to indicate when the configuration process has completed
             case 'acmactivate-success':
             case 'ccmactivate-success':
                 obj.output('AMT Configuration of device ' + message.uuid + ' success');
+                break;
+            // Generally this is a malformed message from the client.
+            case 'message':
                 break;
             // Catches anything that falls through the cracks.  Shouldn't ever see this message
             default:
@@ -159,6 +166,8 @@ function CreateRcs(config, ws, logger, db) {
      */
     obj.remoteConfiguration = function(fwNonce, uuid, event) {
         let rcsObj = {};
+        // Verify we have a valid connection reference and error out if we do not
+        if (!obj.connection[uuid]) { rcsObj = { errorText: "AMT Device " + uuid + " not found in list of connected clients." }; return rcsObj; }
         rcsObj.action = event;
         for (let x in obj.rcsConfig.AMTConfigurations){
             if (obj.rcsConfig.AMTConfigurations[x].ProfileName === obj.connection[uuid].profile){
@@ -166,8 +175,7 @@ function CreateRcs(config, ws, logger, db) {
             }
         }
         if (rcsObj.action == 'acmactivate') {
-            // Verify we have a valid connection reference and error out if we do not
-            if (!obj.connection[uuid]) { rcsObj = { errorText: "AMT Device " + uuid + " not found in list of connected clients." }; return rcsObj; }
+            // Verify we have the required information to configure AMT in ACM mode
             if (fwNonce == null) { rcsObj = { errorText: "Not enough information to configure AMT: Missing Nonce."}; return rcsObj; }
             // Gets all of the certificate information needed by AMT
             let dnsSuffix = null;
@@ -198,7 +206,7 @@ function CreateRcs(config, ws, logger, db) {
             // Check that provisioning certificate root matches one of the trusted roots from AMT
             let hashMatch = false;
             for (let x = 0; x < obj.connection[uuid].certHashes.length; x++) { 
-                if (obj.connection[uuid].certHashes[x] == certObj.rootFingerprint) { hashMatch = true; } }
+                if (obj.connection[uuid].certHashes[x].toUpperCase() == certObj.rootFingerprint.toUpperCase()) { hashMatch = true; } }
             if (hashMatch == false){ return { errorText: "Provisioning Certificate doesn't match any trusted certificates from AMT" }; }
             
             // Don't send private key to the client!!
@@ -231,7 +239,7 @@ function CreateRcs(config, ws, logger, db) {
                 // Got a match, set AMT Profile Password in rcsObj
                 if(obj.rcsConfig.AMTConfigurations[x].GenerateRandomPassword === true){
                     amtPassword = helpers.generateRandomPassword(obj.rcsConfig.AMTConfigurations[x].RandomPasswordCharacters, obj.rcsConfig.AMTConfigurations[x].RandomPasswordLength);
-                    obj.output("Create random password for device " + uuid + ".");
+                    obj.output("Create random password for device " + obj.connection[uuid].amtGuid + ".");
                     if (obj.db == null && obj.logger == null){
                         // DB or Logger link not mapped and randomized password will be lost after device disconnects.  Output password to console window as a last ditch attempt to save password
                         obj.output('Random password not saved anywhere!! Device with AMT GUID: ' + obj.connection[uuid].amtGuid + ' has password: ' + amtPassword);
@@ -262,10 +270,12 @@ function CreateRcs(config, ws, logger, db) {
     * @param {string|buffer|object} message Message blob going to device
     */
     obj.sendMessage = function(tunnel, message) {
-        if (obj.wsServer == null) { obj.output('WebSocket Server not initialized.'); }
-        if (message.status == null) { message.status = 'ok'; }
-        message.version = RCSMessageProtocolVersion;
-        obj.wsServer.sendMessage(tunnel, message);
+        if (obj.wsServer == null) { obj.output('WebSocket Server not initialized.'); } 
+        else {
+            if (message.status == null) { message.status = 'ok'; }
+            message.version = RCSMessageProtocolVersion;
+            obj.wsServer.sendMessage(tunnel, message);
+        }
     }
     return obj;
 }
