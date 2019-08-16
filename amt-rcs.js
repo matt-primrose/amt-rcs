@@ -27,9 +27,10 @@ limitations under the License.
 
 'use strict'
 const fs = require('fs');
-const crypto = require('crypto');
 const websocket = require('./wsserver');
-const helpers = require('./cryptoHelpers');
+const certMgr = require('./certificateManager');
+const cryptoHelpers = require('./cryptoHelpers');
+const passwordHelpers = require('./passwordHelpers');
 const RCSMessageProtocolVersion = 1; // RCS Message Protocol Version.
 /**
 
@@ -42,7 +43,6 @@ const RCSMessageProtocolVersion = 1; // RCS Message Protocol Version.
  * @returns {Object} RCS service object
  */
 function CreateRcs(config, ws, logger, db) {
-
     let obj = new Object();    
     obj.rcsConfig = config;
     obj.wsServer = ws;
@@ -50,10 +50,9 @@ function CreateRcs(config, ws, logger, db) {
     obj.db = db;
     obj.connection = {};
     obj.output = function (msg) { console.log((new Date()) + ' ' + msg); if (obj.logger !== undefined) { obj.logger(msg); } }
-    obj.rcsConfig.AMTConfigurations = helpers.validateAMTPasswords(obj.rcsConfig.AMTConfigurations, function(message){
+    obj.rcsConfig.AMTConfigurations = passwordHelpers.validateAMTPasswords(obj.rcsConfig.AMTConfigurations, function(message){
         obj.output(message);
     });
-    
 
     /**
      * @description Main function to start the RCS service
@@ -147,6 +146,7 @@ function CreateRcs(config, ws, logger, db) {
             case 'acmactivate-success':
             case 'ccmactivate-success':
                 obj.output('AMT Configuration of device ' + message.uuid + ' success');
+                if (obj.db) { obj.db('AMT Configuration of device ' + message.uuid + ' success')}
                 break;
             // Generally this is a malformed message from the client.
             case 'message':
@@ -197,11 +197,11 @@ function CreateRcs(config, ws, logger, db) {
                 // An AMT domain suffix was specified but it doesn't match any of the domain suffix specified in rcs-config.json.
                 return { errorText: "Specified AMT domain suffix does not match list of available AMT domain suffixes." };
             }
-            let pfxobj = helpers.getProvisioningCertObj(cert, certpass);
+            let pfxobj = certMgr.getProvisioningCertObj(cert, certpass);
             
             // Check if we got an error while getting the provisioning cert object
             if (pfxobj.errorText) { return pfxobj; }
-            let certObj = helpers.dumpPfx(pfxobj);
+            let certObj = certMgr.dumpPfx(pfxobj);
 
             // Check that provisioning certificate root matches one of the trusted roots from AMT
             let hashMatch = false;
@@ -213,13 +213,13 @@ function CreateRcs(config, ws, logger, db) {
             let privateKey = certObj.privateKey;
             rcsObj.certs = certObj.certChain;
             // Create a one time nonce that allows AMT to verify the digital signature of the management console performing the provisioning
-            let nonce = helpers.generateNonce();
+            let nonce = cryptoHelpers.generateNonce();
             rcsObj.nonce = nonce.toString('base64');
             // Need to create a new array so we can concatinate both nonces (fwNonce first, Nonce second)
             let arr = [fwNonce, nonce];
             // mcNonce needs to be in base64 format to send over WebSocket connection
             // Then we need to sign the concatinated nonce with the private key of the provisioning certificate and encode as base64.
-            rcsObj.signature = helpers.signString(Buffer.concat(arr), privateKey);
+            rcsObj.signature = cryptoHelpers.signString(Buffer.concat(arr), privateKey);
             if (rcsObj.signature.errorText) { return rcsObj.signature; }
             // Grab the AMT password from the specified profile in rcsConfig file and add that to the rcsObj so we can set the new MEBx password
             rcsObj.profileScript = null;
@@ -238,7 +238,7 @@ function CreateRcs(config, ws, logger, db) {
             if (obj.rcsConfig.AMTConfigurations[x].ProfileName == obj.connection[uuid].profile) {
                 // Got a match, set AMT Profile Password in rcsObj
                 if(obj.rcsConfig.AMTConfigurations[x].GenerateRandomPassword === true){
-                    amtPassword = helpers.generateRandomPassword(obj.rcsConfig.AMTConfigurations[x].RandomPasswordCharacters, obj.rcsConfig.AMTConfigurations[x].RandomPasswordLength);
+                    amtPassword = passwordHelpers.generateRandomPassword(obj.rcsConfig.AMTConfigurations[x].RandomPasswordCharacters, obj.rcsConfig.AMTConfigurations[x].RandomPasswordLength);
                     obj.output("Create random password for device " + obj.connection[uuid].amtGuid + ".");
                     if (obj.db == null && obj.logger == null){
                         // DB or Logger link not mapped and randomized password will be lost after device disconnects.  Output password to console window as a last ditch attempt to save password
@@ -256,7 +256,7 @@ function CreateRcs(config, ws, logger, db) {
             return { errorText: "Specified AMT profile name does not match list of available AMT profiles." };
         }
         let data = 'admin:' + obj.connection[uuid].digestRealm + ':' + amtPassword;
-        rcsObj.passwordHash = crypto.createHash('md5').update(data).digest('hex');
+        rcsObj.passwordHash = cryptoHelpers.createHash('md5', data, 'hex');
         rcsObj.password = amtPassword;
         return rcsObj;
     }

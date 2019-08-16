@@ -38,7 +38,7 @@ const fs = require('fs');
  * @param {function} connectionHandler Callback function to calling library
  * @returns {object} Returns the websocket server object to the calling library
  */
-function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {   
+function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler, consoleLog) {   
     let obj = new Object();
     obj.port = port;
     obj.clients = [];
@@ -48,7 +48,8 @@ function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {
             let privateKey = fs.readFileSync(wsscertkey, 'utf8');
             let certificate = fs.readFileSync(wsscert, 'utf8');
         } catch (e) {
-            console.log('TLS certificate not found.');
+            if (consoleLog !== null) { consoleLog('TLS certificate not found.'); }
+            else { console.log('TLS certificate not found.'); }
             process.exit(1);
         }
         let credentials = { key: privateKey, cert: certificate };
@@ -67,7 +68,8 @@ function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler) {
     obj.wsServer.on('connection', (connection) => {
         // we need to know client index to remove them on 'close' event
         //let index = obj.clients.push(connection) - 1;
-        console.log((new Date()) + ' Connection accepted.');
+        if (consoleLog !== null) { consoleLog('Connection accepted.'); }
+        else { console.log((new Date()) + ' Connection accepted.'); }
         /**
         * message received
         *
