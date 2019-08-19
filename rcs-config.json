@@ -15,7 +15,56 @@
       "RandomPasswordLength": 8,
       "RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890~`!@#$%^&*()_-+=|}]{[;:?.>,<",
       "Activation": "ccmactivate",
-      "ConfigurationScript": null
+      "ConfigurationScript": {
+        "MPS":{
+          "Name": "www.mymps.com",
+          "Port": 4433,
+          "HomeDomain": "www.dummy.com",
+          "MPSUserName": "username",
+          "MPSPassword": "<StrongPassword>"
+        },
+        "WiFi":[
+          {
+            "ProfileName":"profile1",
+            "AccessPoint":"<ssid>",
+            "Encryption":"<None,WEP,WPA,WPA2>",
+            "Authentication":"<None,SharedKey,802.1x>",
+            "WiFiPassword":"<StrongPassword>"
+          },
+          {
+            "ProfileName":"profile2",
+            "AccessPoint":"<ssid>",
+            "Encryption":"<None,WEP,WPA,WPA2>",
+            "Authentication":"<None,SharedKey,802.1x>",
+            "WiFiPassword":"<StrongPassword>"
+          }
+        ],
+        "TLS":{
+          "Enabled": false,
+          "MutualAuthentication": false,
+          "TrustedCN":[
+            "SubjectField",
+            "SubjectField"
+          ],
+          "AcceptNonSecureConnection": false
+        },
+        "8021x":{
+          "Enabled":false,
+          "ActiveInS0":false,
+          "AuthenticationProtocol":0,
+          "RoamingIdentity":"username@domain",
+          "ServerCertificateName":"<optional>",
+          "ServerCertificateNameComparison":"<FullName|DomainSuffix>",
+          "Username":"username",
+          "Password":"<StrongPassword>",
+          "Domain":"domain",
+          "ProtectedAccessCredential":null,
+          "PACPassword":"<StrongPassword",
+          "ClientCertificate":"AMT_PublicKeyCertificate",
+          "ServerCertificateIssuer":"AMT_PublicKeyCertificate",
+          "PxeTimeout":120
+        }
+      }
     },
     {
       "ProfileName": "profile2",
@@ -24,7 +73,56 @@
       "RandomPasswordLength": 8,
       "RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890~`!@#$%^&*()_-+=|}]{[;:?.>,<",
       "Activation": "acmactivate",
-      "ConfigurationScript": null
+      "ConfigurationScript": {
+        "MPS":{
+          "Name": "www.mymps.com",
+          "Port": 4433,
+          "HomeDomain": "www.dummy.com",
+          "MPSUserName": "username",
+          "MPSPassword": "<StrongPassword>"
+        },
+        "WiFi":[
+          {
+            "ProfileName":"profile1",
+            "AccessPoint":"<ssid>",
+            "Encryption":"<None,WEP,WPA,WPA2>",
+            "Authentication":"<None,SharedKey,802.1x>",
+            "WiFiPassword":"<StrongPassword>"
+          },
+          {
+            "ProfileName":"profile2",
+            "AccessPoint":"<ssid>",
+            "Encryption":"<None,WEP,WPA,WPA2>",
+            "Authentication":"<None,SharedKey,802.1x>",
+            "WiFiPassword":"<StrongPassword>"
+          }
+        ],
+        "TLS":{
+          "Enabled": false,
+          "MutualAuthentication": false,
+          "TrustedCN":[
+            "SubjectField",
+            "SubjectField"
+          ],
+          "AcceptNonSecureConnection": false
+        },
+        "8021x":{
+          "Enabled":false,
+          "ActiveInS0":false,
+          "AuthenticationProtocol":0,
+          "RoamingIdentity":"username@domain",
+          "ServerCertificateName":"<optional>",
+          "ServerCertificateNameComparison":"<FullName|DomainSuffix>",
+          "Username":"username",
+          "Password":"<StrongPassword>",
+          "Domain":"domain",
+          "ProtectedAccessCredential":null,
+          "PACPassword":"<StrongPassword",
+          "ClientCertificate":"AMT_PublicKeyCertificate",
+          "ServerCertificateIssuer":"AMT_PublicKeyCertificate",
+          "PxeTimeout":120
+        }
+      }
     }
   ],
   "AMTDomains": [

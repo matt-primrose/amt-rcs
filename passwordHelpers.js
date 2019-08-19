@@ -25,10 +25,10 @@ passwordHelpers.passwordCheck = function(password){
     let pass = new Boolean();
     let len = 8;
     let matches = new Array();
-    matches.push("[$@$!%*#?&]");
-    matches.push("[A-Z]");
-    matches.push("[0-9]");
-    matches.push("[a-z]");
+    matches.push(/\W|_/g);
+    matches.push(/[A-Z]/g);
+    matches.push(/[0-9]/g);
+    matches.push(/[a-z]/g);
     let n = 0;
     for (let i = 0; i < matches.length; i++){
         if (new RegExp(matches[i]).test(password)){
@@ -49,17 +49,28 @@ passwordHelpers.passwordCheck = function(password){
  * @param {number} length Length of desired password 
  * @returns {string} Returns random password string
  */
-passwordHelpers.generateRandomPassword = function(validChars, length, callback){
+passwordHelpers.generateRandomPassword = function(length){
+    if ((length < 8) || (length > 32)){ return {'errorText': 'Invalid password length specified.'}; }
     let password = '';
-    if ((validChars == null) || (validChars == '')) { 
-        callback({'errorText': 'Not enough valid characters to create random password.'}); 
+    let validChars = "abcdefghijklmnopqrstuvwxyz";
+    let validNums = "0123456789";
+    let validSpec = "!@#$%^&*()_-+=?.>,<";
+    let numLen = Math.floor(Math.random() * length/3) + 1;
+    let specLen = Math.floor(Math.random() * length/3) + 1;
+    let charLen = length-numLen-specLen;
+    for (let x = 0; x < charLen; x++){
+        let upper = Math.random() >= 0.5;
+        if (upper == true){ password += validChars.charAt(Math.floor(Math.random() * validChars.length)).toUpperCase(); }
+        else { password += validChars.charAt(Math.floor(Math.random() * validChars.length)); }
     }
-    if ((length < 8) || (length > 32)){
-        callback({'errorText': 'Invalid password length specified.'});
+    for (let x = 0; x < specLen; x++){
+        password += validSpec.charAt(Math.floor(Math.random() * validSpec.length));
     }
-    for (let x = 0; x < length; x++){
-        password = password + validChars.charAt(Math.floor(Math.random() * validChars.length));
+    for (let x = 0; x < numLen; x++){
+        password += validNums.charAt(Math.floor(Math.random() * validNums.length));
+        password = password.split('').sort(function(){ return 0.5 - Math.random() }).join('');
     }
+    if (!passwordHelpers.passwordCheck(password)) { passwordHelpers.generateRandomPassword(length); }
     return password;
 };
 

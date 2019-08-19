@@ -238,7 +238,8 @@ function CreateRcs(config, ws, logger, db) {
             if (obj.rcsConfig.AMTConfigurations[x].ProfileName == obj.connection[uuid].profile) {
                 // Got a match, set AMT Profile Password in rcsObj
                 if(obj.rcsConfig.AMTConfigurations[x].GenerateRandomPassword === true){
-                    amtPassword = passwordHelpers.generateRandomPassword(obj.rcsConfig.AMTConfigurations[x].RandomPasswordCharacters, obj.rcsConfig.AMTConfigurations[x].RandomPasswordLength);
+                    amtPassword = passwordHelpers.generateRandomPassword(obj.rcsConfig.AMTConfigurations[x].RandomPasswordLength);
+                    if (amtPassword.errorText) { return amtPassword; }
                     obj.output("Create random password for device " + obj.connection[uuid].amtGuid + ".");
                     if (obj.db == null && obj.logger == null){
                         // DB or Logger link not mapped and randomized password will be lost after device disconnects.  Output password to console window as a last ditch attempt to save password

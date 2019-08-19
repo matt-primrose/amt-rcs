@@ -1,6 +1,21 @@
+
+/*
+Copyright 2019 Intel Corporation
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 const rcs = require('../amt-rcs');
 const config = {"Name": "RCS Configuration File","Description": "Contains settings to configure the RCS Server","WSConfiguration": {"WebSocketPort": 8080,"WebSocketTLS": false,"WebSocketCertificate": "tlscert.pem","WebSocketCertificateKey": "tlskey.pem"},"AMTConfigurations": [{"ProfileName": "profile1","AMTPassword": "P@ssw0rd","GenerateRandomPassword": true,"RandomPasswordLength": 8,"RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890~`!@#$%^&*()_-+=|}]{[;:?.>,<","Activation": "ccmactivate","ConfigurationScript": null},{"ProfileName": "profile2","AMTPassword": "P@ssw0rd","GenerateRandomPassword": false,"RandomPasswordLength": 8,"RandomPasswordCharacters": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz1234567890~`!@#$%^&*()_-+=|}]{[;:?.>,<","Activation": "acmactivate","ConfigurationScript": null}],"AMTDomains": [{"Name": "domain1","DomainSuffix": "vprodemo.com","ProvisioningCert": "vprodemo.pfx","ProvisioningCertPassword": "P@ssw0rd"},{"Name": "domain2","DomainSuffix": "d2.com","ProvisioningCert": "d2.pfx","ProvisioningCertPassword": "password"}]};
-
 test("Creates an amt-rcs object", ()=> {
     let amtrcs = rcs(config);
     expect(amtrcs.rcsConfig.Name).toBe('RCS Configuration File');
