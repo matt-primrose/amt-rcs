@@ -66,7 +66,7 @@ function CreateRcs(config, ws, logger, db) {
         obj.output('Starting RCS Server...');
         if (obj.wsServer === undefined) { // Start the basic websocket server included in amt-rcs
             try{
-                obj.wsServer = websocket(obj.rcsConfig.WSConfiguration.WebSocketPort, obj.rcsConfig.WSConfiguration.WebSocketTLS, obj.rcsConfig.WSConfiguration.WebSocketCertificate, obj.rcsConfig.WSConfiguration.WebSocketCertificateKey, obj.wsConnectionHandler);
+                obj.wsServer = websocket(obj.rcsConfig.WSConfiguration.WebSocketPort, obj.rcsConfig.WSConfiguration.WebSocketTLS, obj.rcsConfig.WSConfiguration.WebSocketCertificate, obj.rcsConfig.WSConfiguration.WebSocketCertificateKey, obj.wsConnectionHandler, obj.output);
                 obj.output('RCS Server running on port: ' + obj.rcsConfig.WSConfiguration.WebSocketPort);
             } catch (e){
                 obj.output('Failed to start Web Socket Server. ' + e) ;
