@@ -51,7 +51,7 @@ function CreateRcs(config, ws, logger, db) {
     obj.connection = {};
     obj.output = function (msg) { console.log((new Date()) + ' ' + msg); if (obj.logger !== undefined) { obj.logger(msg); } }
     obj.rcsConfig.AMTConfigurations = passwordHelpers.validateAMTPasswords(obj.rcsConfig.AMTConfigurations, function(message){
-        obj.output(message);
+        obj.output(message.errorText);
     });
 
     /**

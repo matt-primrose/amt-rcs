@@ -82,13 +82,13 @@ passwordHelpers.validateAMTPasswords = function(list, callback){
     for(let x = 0; x < list.length; x++){
         if (list[x].GenerateRandomPassword === false){
             if(!passwordHelpers.passwordCheck(list[x].AMTPassword)){
-                callback({'errorText': "Detected bad AMT password for profile: " + list[x].ProfileName + "./n/rRemoving " + list[x].ProfileName + " profile from list of available AMT profiles."});
+                callback({'errorText': "Detected bad AMT password for profile: " + list[x].ProfileName + ".  Removing " + list[x].ProfileName + " profile from list of available AMT profiles."});
                 list.splice(x, 1);
                 passwordHelpers.validateAMTPasswords(list);
             }
         } else {
             if((list[x].RandomPasswordLength > 32) || (list[x].RandomPasswordLength < 8)){
-                callback({'errorText': "Detected bad AMT password length for profile: " + list[x].ProfileName + "./n/rRemoving " + list[x].ProfileName + " profile from list of available AMT profiles."});
+                callback({'errorText': "Detected bad AMT password length for profile: " + list[x].ProfileName + ".  Removing " + list[x].ProfileName + " profile from list of available AMT profiles."});
                 list.splice(x, 1);
                 passwordHelpers.validateAMTPasswords(list);
             }

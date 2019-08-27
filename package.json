@@ -10,7 +10,7 @@
   "devDependencies": {
     "jest": "^24.8.0",
     "node-forge": "^0.8.5",
-    "ws": "^7.1.0"
+    "ws": "^7.1.2"
   },
   "scripts": {
     "test": "jest"
