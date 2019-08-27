@@ -40,19 +40,19 @@ test('Returns error message if a bad AMT password is detected', async ()=>{
     let list = [{"ProfileName": "profile1","AMTPassword": "password","GenerateRandomPassword": false,"RandomPasswordLength": 8,"Activation": "ccmactivate","ConfigurationScript": null}];
     let cbMessage = '';
     passwordHelpers.validateAMTPasswords(list, function(message){ cbMessage = message; });
-    expect(cbMessage.errorText).toBe("Detected bad AMT password for profile: profile1./n/rRemoving profile1 profile from list of available AMT profiles.");
+    expect(cbMessage.errorText).toBe("Detected bad AMT password for profile: profile1.  Removing profile1 profile from list of available AMT profiles.");
 });
 test('Returns error message if random AMT password length is too short', async ()=>{
     let list = [{"ProfileName": "profile1","AMTPassword": "<StrongPassword>","GenerateRandomPassword": true,"RandomPasswordLength": 7,"Activation": "ccmactivate","ConfigurationScript": null}];
     let cbMessage = '';
     passwordHelpers.validateAMTPasswords(list, function(message){ cbMessage = message; });
-    expect(cbMessage.errorText).toBe("Detected bad AMT password length for profile: profile1./n/rRemoving profile1 profile from list of available AMT profiles.");
+    expect(cbMessage.errorText).toBe("Detected bad AMT password length for profile: profile1.  Removing profile1 profile from list of available AMT profiles.");
 });
 test('Returns error message if random AMT password length is too long', async ()=>{
     let list = [{"ProfileName": "profile1","AMTPassword": "<StrongPassword>","GenerateRandomPassword": true,"RandomPasswordLength": 33,"Activation": "ccmactivate","ConfigurationScript": null}];
     let cbMessage = '';
     passwordHelpers.validateAMTPasswords(list, function(message){ cbMessage = message; });
-    expect(cbMessage.errorText).toBe("Detected bad AMT password length for profile: profile1./n/rRemoving profile1 profile from list of available AMT profiles.");
+    expect(cbMessage.errorText).toBe("Detected bad AMT password length for profile: profile1.  Removing profile1 profile from list of available AMT profiles.");
 });
 test('Returns list without bad profile', async ()=>{
     let list = [{"ProfileName": "profile1","AMTPassword": "<StrongPassword>","GenerateRandomPassword": true,"RandomPasswordLength": 33,"Activation": "ccmactivate","ConfigurationScript": null}];
