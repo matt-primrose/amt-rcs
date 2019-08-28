@@ -99,39 +99,42 @@ function CreateRcs(config, ws, logger, db) {
             if (message.realm) { client.digestRealm = message.realm; }
             if (message.nonce) { client.fwNonce = Buffer.from(message.nonce, 'base64'); }
             if (message.hashes) { client.certHashes = message.hashes; }
+            console.log('Client with UUID: ' + message.uuid + ' connected');
             if (message.uuid) { client.amtGuid = message.uuid; }
             if (message.ver) { client.amtVer = message.ver; }
             if (message.modes) { client.provisionModes = message.modes; }
             if (message.currentMode) { client.currentMode = message.currentMode; }
             if (message.tag) { client.tag = message.tag; }
             if (tunnel) { client.tunnel = tunnel; }
-            if (obj.connection[client.uuid] === undefined) { obj.connection[client.uuid] = client; }
+            if (obj.connection[client.amtGuid] === undefined) { obj.connection[client.amtGuid] = client; }
             if (obj.db) { obj.db(client); }
         }
         switch (event) {
             // Handles 'acmactivate' messages
             case 'acmactivate':
-                rcsObj = obj.remoteConfiguration(client.fwNonce, client.uuid, event);
+                rcsObj = obj.remoteConfiguration(client.fwNonce, client.amtGuid, event);
                 if (rcsObj.errorText) { 
                     obj.output(rcsObj.errorText); 
-                    obj.sendMessage(tunnel, rcsObj)
+                    
+                    obj.sendMessage(obj.connection[rcsObj.uuid].tunnel, rcsObj)
                 }
-                let acm = {'version': RCSMessageProtocolVersion, 'status': 'ok', 'certs': rcsObj.certs, 'action': rcsObj.action, 'nonce': rcsObj.nonce, 'signature': rcsObj.signature, 'profileScript': rcsObj.profileScript, 'password': rcsObj.passwordHash};
+                let acm = {'version': RCSMessageProtocolVersion, 'status': 'ok', 'certs': rcsObj.certs, 'action': rcsObj.action, 'nonce': rcsObj.nonce, 'signature': rcsObj.signature, 'profileScript': rcsObj.profileScript, 'password': rcsObj.passwordHash, 'uuid': client.amtGuid };
                 if (obj.db) { obj.db(rcsObj); }
                 if (obj.logger) { obj.logger(rcsObj); }
-                obj.sendMessage(tunnel, acm);
+                console.log('Sending Message to :' + client.amtGuid);
+                obj.sendMessage(obj.connection[rcsObj.uuid].tunnel, acm);
                 break;
             // Handles 'ccmactivate' messages
             case 'ccmactivate':
-                rcsObj = obj.remoteConfiguration((client.fwNonce ? client.fwNonce : null), client.uuid, event);
+                rcsObj = obj.remoteConfiguration((client.fwNonce ? client.fwNonce : null), client.amtGuid, event);
                 if (rcsObj.errorText) { 
                     obj.output(rcsObj.errorText); 
-                    obj.sendMessage(tunnel, rcsObj);
+                    obj.sendMessage(obj.connection[rcsObj.uuid].tunnel, rcsObj);
                 }
-                let ccm = {'version': RCSMessageProtocolVersion, 'status': 'ok', 'certs': rcsObj.certs, 'action': rcsObj.action, 'nonce': rcsObj.nonce, 'signature': rcsObj.signature, 'profileScript': rcsObj.profileScript, 'password': rcsObj.passwordHash}
+                let ccm = {'version': RCSMessageProtocolVersion, 'status': 'ok', 'certs': rcsObj.certs, 'action': rcsObj.action, 'nonce': rcsObj.nonce, 'signature': rcsObj.signature, 'profileScript': rcsObj.profileScript, 'password': rcsObj.passwordHash, 'uuid': client.amtGuid };
                 if (obj.db) { obj.db(rcsObj); }
                 if (obj.logger) { obj.logger(rcsObj); }
-                obj.sendMessage(tunnel, ccm);
+                obj.sendMessage(obj.connection[rcsObj.uuid].tunnel, ccm);
                 break;
             // Handles 'error' type messages
             case 'error':                
@@ -166,6 +169,7 @@ function CreateRcs(config, ws, logger, db) {
      */
     obj.remoteConfiguration = function(fwNonce, uuid, event) {
         let rcsObj = {};
+        rcsObj.uuid = uuid;
         // Verify we have a valid connection reference and error out if we do not
         if (!obj.connection[uuid]) { rcsObj = { errorText: "AMT Device " + uuid + " not found in list of connected clients." }; return rcsObj; }
         rcsObj.action = event;
@@ -176,7 +180,7 @@ function CreateRcs(config, ws, logger, db) {
         }
         if (rcsObj.action == 'acmactivate') {
             // Verify we have the required information to configure AMT in ACM mode
-            if (fwNonce == null) { rcsObj = { errorText: "Not enough information to configure AMT: Missing Nonce."}; return rcsObj; }
+            if (fwNonce == null || fwNonce == undefined) { rcsObj = { errorText: "Not enough information to configure AMT: Missing Nonce."}; return rcsObj; }
             // Gets all of the certificate information needed by AMT
             let dnsSuffix = null;
             // Check the connection array if the dnsSuffix is set for this connection.

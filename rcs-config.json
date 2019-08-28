@@ -67,7 +67,7 @@
     },
     {
       "ProfileName": "profile2",
-      "AMTPassword": "<StrongPassword>",
+      "AMTPassword": "P@ssw0rd",
       "GenerateRandomPassword": false,
       "RandomPasswordLength": 8,
       "Activation": "acmactivate",
@@ -128,13 +128,13 @@
       "Name": "domain1",
       "DomainSuffix": "amt.net",
       "ProvisioningCert": "d1.pfx",
-      "ProvisioningCertPassword": "password"
+      "ProvisioningCertPassword": "P@ssw0rd"
     },
     {
       "Name": "domain2",
-      "DomainSuffix": "d2.com",
-      "ProvisioningCert": "d2.pfx",
-      "ProvisioningCertPassword": "password"
+      "DomainSuffix": "vprodemo.com",
+      "ProvisioningCert": "vprodemo.pfx",
+      "ProvisioningCertPassword": "P@ssw0rd"
     }
   ]
 }
