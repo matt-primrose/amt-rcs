@@ -271,6 +271,7 @@ function CreateRcs(config, ws, logger, db) {
             // An AMT profile was specified but it doesn't match any of the profile names in rcs-config.json.  Send warning to console and default to first AMT profile listed.
             return helpers.createErrorMessage(uuid, "Specified AMT profile name does not match list of available AMT profiles." );
         }
+        if ((obj.connection[uuid].digestRealm == null) || (obj.connection[uuid].digestRealm == undefined) || (obj.connection[uuid].digestRealm.length !== 39)) { return helpers.createErrorMessage(uuid, "Invalid digest realm"); }
         let data = 'admin:' + obj.connection[uuid].digestRealm + ':' + amtPassword;
         rcsObj.passwordHash = cryptoHelpers.createHash('md5', data, 'hex');
         rcsObj.password = amtPassword;
