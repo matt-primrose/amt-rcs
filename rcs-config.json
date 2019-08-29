@@ -10,10 +10,10 @@
   "AMTConfigurations": [
     {
       "ProfileName": "profile1",
-      "AMTPassword": "<StrongPassword>",
+      "AMTPassword": "P@ssw0rd",
       "GenerateRandomPassword": true,
       "RandomPasswordLength": 8,
-      "Activation": "ccmactivate",
+      "Activation": "acmactivate",
       "ConfigurationScript": {
         "MPS":{
           "Name": "www.mymps.com",
@@ -70,7 +70,7 @@
       "AMTPassword": "P@ssw0rd",
       "GenerateRandomPassword": false,
       "RandomPasswordLength": 8,
-      "Activation": "acmactivate",
+      "Activation": "ccmactivate",
       "ConfigurationScript": {
         "MPS":{
           "Name": "www.mymps.com",

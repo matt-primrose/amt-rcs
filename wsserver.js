@@ -107,7 +107,7 @@ function WebSocketServer(port, tls, wsscert, wsscertkey, connectionHandler, cons
     * @param {Number} index Index of the connected client
     * @param {JSON} message Message in JSON format to be sent to client
     */
-    obj.sendMessage = function (connection, message) { connection.send(JSON.stringify(message)); };
+    obj.sendMessage = function (connection, message) { connection.send(message); };
     /**
     * @external eventHandler
     * @description forwards a message from the connected client to the backend service
