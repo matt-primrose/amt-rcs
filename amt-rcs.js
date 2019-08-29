@@ -290,7 +290,7 @@ function CreateRcs(config, ws, logger, db) {
         else {
             if (message.status == null) { message.status = 'ok'; }
             message.version = RCSMessageProtocolVersion;
-            obj.wsServer.sendMessage(tunnel, message);
+            obj.wsServer.sendMessage(tunnel, JSON.stringify(message));
         }
     }
     
