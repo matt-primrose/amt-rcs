@@ -108,6 +108,8 @@ function CreateRcs(config, ws, logger, db) {
             if (message.hashes) { client.certHashes = message.hashes; }
             if (message.uuid) { client.amtGuid = message.uuid; }
             if (message.ver) { client.amtVer = message.ver; }
+            if (message.build) { client.amtBuild = message.build; }
+            console.log(client.amtBuild);
             if (message.modes) { client.provisionModes = message.modes; }
             if (message.currentMode) { client.currentMode = message.currentMode; }
             if (message.tag) { client.tag = message.tag; }
