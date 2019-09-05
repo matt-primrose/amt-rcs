@@ -98,6 +98,7 @@ function CreateRcs(config, ws, logger, db) {
         }
         let client = {};
         let rcsObj = {};
+        let msg = {};
         if ((event !== 'close') && (event !== 'error') && (event !== 'message')){
             if (message.client) { client.client = message.client; }
             if (message.action) { client.action = message.action; }
@@ -109,7 +110,6 @@ function CreateRcs(config, ws, logger, db) {
             if (message.uuid) { client.amtGuid = message.uuid; }
             if (message.ver) { client.amtVer = message.ver; }
             if (message.build) { client.amtBuild = message.build; }
-            console.log(client.amtBuild);
             if (message.modes) { client.provisionModes = message.modes; }
             if (message.currentMode) { client.currentMode = message.currentMode; }
             if (message.tag) { client.tag = message.tag; }
@@ -120,27 +120,37 @@ function CreateRcs(config, ws, logger, db) {
         switch (event) {
             // Handles 'acmactivate' messages
             case 'acmactivate':
-                rcsObj = obj.remoteConfiguration(client.fwNonce, client.amtGuid, event);
+                if (client.amtBuild < 3000) { 
+                    msg = helpers.createErrorMessage(client.amtGuid, 'Unable to activate Intel(r) AMT.  Firmware must be updated to latest version.'); 
+                    obj.output(msg); 
+                } else {
+                    rcsObj = obj.remoteConfiguration(client.fwNonce, client.amtGuid, event);
+                }
                 if (rcsObj.errorText) { 
                     obj.output(rcsObj.errorText); 
-                    obj.sendMessage(obj.connection[rcsObj.uuid].tunnel, rcsObj)
+                } else {
+                    msg = {'version': RCSMessageProtocolVersion, 'status': 'ok', 'certs': rcsObj.certs, 'action': rcsObj.action, 'nonce': rcsObj.nonce, 'signature': rcsObj.signature, 'profileScript': rcsObj.profileScript, 'password': rcsObj.passwordHash, 'uuid': client.amtGuid };
                 }
-                let acm = {'version': RCSMessageProtocolVersion, 'status': 'ok', 'certs': rcsObj.certs, 'action': rcsObj.action, 'nonce': rcsObj.nonce, 'signature': rcsObj.signature, 'profileScript': rcsObj.profileScript, 'password': rcsObj.passwordHash, 'uuid': client.amtGuid };
                 if (obj.db) { obj.db(rcsObj); }
                 if (obj.logger) { obj.logger(rcsObj); }
-                obj.sendMessage(obj.connection[rcsObj.uuid].tunnel, acm);
+                obj.sendMessage(obj.connection[rcsObj.uuid].tunnel, msg);
                 break;
             // Handles 'ccmactivate' messages
             case 'ccmactivate':
-                rcsObj = obj.remoteConfiguration((client.fwNonce ? client.fwNonce : null), client.amtGuid, event);
+                if (client.amtBuild < 3000){
+                    msg = helpers.createErrorMessage(client.amtGuid, 'Unable to activate Intel(r) AMT.  Firmware must be updated to latest version.'); 
+                    obj.output(msg); 
+                } else {
+                    rcsObj = obj.remoteConfiguration((client.fwNonce ? client.fwNonce : null), client.amtGuid, event);
+                }
                 if (rcsObj.errorText) { 
                     obj.output(rcsObj.errorText); 
-                    obj.sendMessage(obj.connection[rcsObj.uuid].tunnel, rcsObj);
+                } else {
+                    msg = {'version': RCSMessageProtocolVersion, 'status': 'ok', 'certs': rcsObj.certs, 'action': rcsObj.action, 'nonce': rcsObj.nonce, 'signature': rcsObj.signature, 'profileScript': rcsObj.profileScript, 'password': rcsObj.passwordHash, 'uuid': client.amtGuid };
                 }
-                let ccm = {'version': RCSMessageProtocolVersion, 'status': 'ok', 'certs': rcsObj.certs, 'action': rcsObj.action, 'nonce': rcsObj.nonce, 'signature': rcsObj.signature, 'profileScript': rcsObj.profileScript, 'password': rcsObj.passwordHash, 'uuid': client.amtGuid };
                 if (obj.db) { obj.db(rcsObj); }
                 if (obj.logger) { obj.logger(rcsObj); }
-                obj.sendMessage(obj.connection[rcsObj.uuid].tunnel, ccm);
+                obj.sendMessage(obj.connection[rcsObj.uuid].tunnel, msg);
                 break;
             // Handles 'error' type messages
             case 'error':                
