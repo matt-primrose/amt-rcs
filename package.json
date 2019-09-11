@@ -13,6 +13,6 @@
     "ws": "^7.1.2"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest --collectCoverage"
   }
 }
