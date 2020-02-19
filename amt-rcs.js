@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Intel Corporation
+Copyright 2019-2020 Intel Corporation
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -137,7 +137,7 @@ function CreateRcs(config, ws, logger, db) {
                 }
                 if (obj.db) { obj.db(rcsObj); }
                 if (obj.logger) { obj.logger(rcsObj); }
-                msg['version'] = RCSMessageProtocolVersion;
+                msg.version = RCSMessageProtocolVersion;
                 obj.sendMessage(obj.connection[client.amtGuid].tunnel, msg);
                 break;
             // Handles 'ccmactivate' messages

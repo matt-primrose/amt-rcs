@@ -11,7 +11,7 @@
     {
       "ProfileName": "profile1",
       "AMTPassword": "P@ssw0rd",
-      "GenerateRandomPassword": true,
+      "GenerateRandomPassword": false,
       "RandomPasswordLength": 8,
       "Activation": "acmactivate",
       "ConfigurationScript": {
