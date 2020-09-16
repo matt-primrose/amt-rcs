@@ -9,7 +9,7 @@
   "dependencies": {},
   "devDependencies": {
     "jest": "^24.8.0",
-    "node-forge": "^0.8.5",
+    "node-forge": "^0.10.0",
     "ws": "^7.1.2"
   },
   "scripts": {
