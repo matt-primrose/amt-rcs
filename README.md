@@ -1,4 +1,6 @@
-﻿# amt-rcs
+This repository has been archived.  Please see github.com/open-amt-cloud-toolkit/rps for updated version of this project
+ 
+ # amt-rcs
 A Remote Configuration Service for configuring Intel:registered: AMT devices into admin control mode.  Depends on node-forge and ws NPM libraries.  Before running the service, you'll need to npm install both of these packages.
 Built to work with MeshCMD which you can get here: https://www.meshcommander.com/meshcommander/meshcmd
 
