@@ -1,4 +1,4 @@
-This repository has been archived.  Please see [github.com/open-amt-cloud-toolkit/rps](github.com/open-amt-cloud-toolkit/rps) for updated version of this project
+This repository has been archived.  Please see [github.com/open-amt-cloud-toolkit/rps](https://github.com/open-amt-cloud-toolkit/rps) for updated version of this project
  
  # amt-rcs
 A Remote Configuration Service for configuring Intel:registered: AMT devices into admin control mode.  Depends on node-forge and ws NPM libraries.  Before running the service, you'll need to npm install both of these packages.
